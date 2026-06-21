@@ -37,18 +37,17 @@
 
     .top-bar {
       display: flex;
+      flex-wrap: nowrap;
       align-items: center;
-      justify-content: center;
+      gap: 0.35rem;
       min-height: 2.5rem;
-      position: relative;
     }
 
     .overlay-btn {
-      position: absolute;
-      top: 0;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
       width: 2.5rem;
       height: 2.5rem;
       background: rgba(0, 0, 0, 0.35);
@@ -62,40 +61,45 @@
 
     .overlay-btn:active { background: rgba(0, 0, 0, 0.55); }
 
-    .back-btn { left: 0; }
-
-    .menu-btn { left: 2.85rem; }
-
-    .fullscreen-btn { right: 0; }
-
     h1 {
-      font-size: 1.25rem;
       font-weight: 600;
       letter-spacing: 0.02em;
-      text-align: center;
       color: #fff;
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
     }
 
     .page-title-row {
       display: flex;
+      flex: 1;
       align-items: center;
-      justify-content: center;
-      gap: 0.2rem;
+      justify-content: flex-start;
+      gap: 0.35rem;
       min-width: 0;
-      max-width: min(16rem, calc(100vw - 9rem));
       pointer-events: none;
+    }
+
+    .label-prefix-text {
+      flex-shrink: 0;
+      display: inline-block;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.2;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
     }
 
     #pageTitle {
       pointer-events: auto;
       cursor: pointer;
-      padding: 0.2rem 0.5rem;
+      padding: 0.2rem 0.35rem;
       border-radius: 8px;
+      flex: 1;
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      text-align: left;
+      font-size: 1.05rem;
     }
 
     #pageTitle:active {
@@ -135,13 +139,14 @@
       font-size: 1.25rem;
       font-weight: 600;
       letter-spacing: 0.02em;
-      text-align: center;
+      text-align: left;
       color: #fff;
       background: rgba(0, 0, 0, 0.45);
       border: 1px solid rgba(255, 255, 255, 0.35);
       border-radius: 8px;
       padding: 0.2rem 0.5rem;
-      width: min(14rem, calc(100vw - 9rem));
+      flex: 1;
+      min-width: 0;
       max-width: 100%;
       outline: none;
       text-shadow: none;
@@ -518,15 +523,8 @@
                   <line x1="4" y1="17" x2="20" y2="17"/>
                 </svg>
               </button>
-              <button class="overlay-btn fullscreen-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen">
-                <svg class="fullscreen-enter-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M8 3H3v5M16 3h5v5M16 21h5v-5M8 21H3v-5"/>
-                </svg>
-                <svg class="fullscreen-exit-icon hidden" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M8 3v3H3M16 3v3h5M16 21v-3h5M8 21v-3H3"/>
-                </svg>
-              </button>
               <div class="page-title-row">
+                <span class="label-prefix-text">Label:</span>
                 <h1 id="pageTitle" title="Tap to edit image label">Image Capture</h1>
                 <button
                   class="label-increment-btn hidden"
@@ -535,6 +533,14 @@
                   aria-label="Increment label number"
                 >+</button>
               </div>
+              <button class="overlay-btn fullscreen-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen">
+                <svg class="fullscreen-enter-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M8 3H3v5M16 3h5v5M16 21h5v-5M8 21H3v-5"/>
+                </svg>
+                <svg class="fullscreen-exit-icon hidden" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M8 3v3H3M16 3v3h5M16 21v-3h5M8 21v-3H3"/>
+                </svg>
+              </button>
             </div>
             <p class="stats" id="stats">Starting camera…</p>
           </div>
