@@ -51,7 +51,8 @@ const BARCODE_FORMATS = [
 const BARCODE_FORMAT_OPTIONS = BARCODE_FORMATS.map((format) => format.id);
 const DEFAULT_BARCODE_FORMAT = 'data_matrix';
 const DEFAULT_QUALITY_METRICS = {
-  focusScore: true
+  focusScore: true,
+  showHistogram: true
 };
 
 function getBarcodeFormatConfig(formatId) {
@@ -93,7 +94,8 @@ function getImageResolutionLabel(resolutionId) {
 function normalizeQualityMetrics(value) {
   const source = value && typeof value === 'object' ? value : {};
   return {
-    focusScore: Boolean(source.focusScore)
+    focusScore: Boolean(source.focusScore),
+    showHistogram: Boolean(source.showHistogram)
   };
 }
 

@@ -318,6 +318,11 @@
         <input type="checkbox" class="toggle-input" id="focusScoreToggle">
         <span class="toggle-switch" aria-hidden="true"></span>
       </label>
+      <label class="toggle-option" for="showHistogramToggle">
+        <span>Show Histogram</span>
+        <input type="checkbox" class="toggle-input" id="showHistogramToggle">
+        <span class="toggle-switch" aria-hidden="true"></span>
+      </label>
     </div>
 
     <div class="setting-group">
@@ -451,7 +456,9 @@
     if (selected) selected.checked = true;
 
     const focusScoreToggle = document.getElementById('focusScoreToggle');
+    const showHistogramToggle = document.getElementById('showHistogramToggle');
     focusScoreToggle.checked = Boolean(settings.qualityMetrics?.focusScore);
+    showHistogramToggle.checked = Boolean(settings.qualityMetrics?.showHistogram);
 
     const processingChoice = document.querySelector(
       `input[name="imageProcessing"][value="${settings.imageProcessing}"]`
@@ -517,7 +524,8 @@
       const labelChanged = imageLabel !== (settings.imageLabel ?? '');
       const imageCounter = labelChanged ? DEFAULT_IMAGE_COUNTER : settings.imageCounter;
       const qualityMetrics = {
-        focusScore: focusScoreToggle.checked
+        focusScore: focusScoreToggle.checked,
+        showHistogram: showHistogramToggle.checked
       };
 
       saveSettings({

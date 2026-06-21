@@ -182,6 +182,15 @@
       aspect-ratio: 1 / 1;
     }
 
+    .metrics-region-overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
     .zoom-overlay {
       position: absolute;
       inset: 0;
@@ -189,7 +198,7 @@
       flex-direction: column;
       justify-content: space-between;
       pointer-events: none;
-      z-index: 1;
+      z-index: 2;
     }
 
     .zoom-overlay-top {
@@ -225,6 +234,22 @@
         rgba(0, 0, 0, 0.55) 0%,
         transparent 100%
       );
+    }
+
+    .histogram-overlay {
+      position: absolute;
+      left: 0.65rem;
+      bottom: 0.65rem;
+      pointer-events: none;
+      z-index: 3;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .histogram-overlay canvas {
+      display: block;
+      width: 140px;
+      height: 90px;
     }
 
     .capture-btn {
@@ -407,14 +432,19 @@
     <section class="zoom-section" aria-label="Center zoom">
       <div class="zoom-view">
         <canvas id="zoomCanvas" width="1500" height="1500"></canvas>
+        <canvas id="metricsRegionCanvas" class="metrics-region-overlay hidden"></canvas>
         <div class="zoom-overlay">
           <div class="zoom-overlay-top">
             <span class="zoom-label" id="zoomLabel">Center crop · 1500 × 1500</span>
             <span class="quality-metric hidden" id="focusScoreLabel">Focus score · 0.0</span>
+            <span class="quality-metric hidden" id="maxPixelCountLabel">Max Pixel Count · 0</span>
           </div>
           <div class="zoom-overlay-bottom">
             <button class="capture-btn" id="captureBtn" type="button" aria-label="Save PNG" disabled></button>
           </div>
+        </div>
+        <div class="histogram-overlay hidden" id="histogramOverlay">
+          <canvas id="histogramCanvas" width="140" height="90"></canvas>
         </div>
       </div>
     </section>
@@ -469,6 +499,12 @@
     const maxResolutionLabel = document.getElementById('maxResolutionLabel');
     const zoomLabel = document.getElementById('zoomLabel');
     const focusScoreLabel = document.getElementById('focusScoreLabel');
+    const maxPixelCountLabel = document.getElementById('maxPixelCountLabel');
+    const histogramOverlay = document.getElementById('histogramOverlay');
+    const histogramCanvas = document.getElementById('histogramCanvas');
+    const histogramCtx = histogramCanvas.getContext('2d');
+    const metricsRegionCanvas = document.getElementById('metricsRegionCanvas');
+    const metricsRegionCtx = metricsRegionCanvas.getContext('2d');
     const zoomView = document.querySelector('.zoom-view');
     const referenceView = document.querySelector('.reference-view');
 
@@ -553,24 +589,90 @@
       }
     }
 
+    function qualityMetricsActive() {
+      return Boolean(
+        appSettings.qualityMetrics?.focusScore ||
+        appSettings.qualityMetrics?.showHistogram
+      );
+    }
+
+    function updateMetricsRegionOverlay(squareSize) {
+      if (!qualityMetricsActive()) {
+        metricsRegionCanvas.classList.add('hidden');
+        return;
+      }
+
+      if (metricsRegionCanvas.width !== squareSize || metricsRegionCanvas.height !== squareSize) {
+        metricsRegionCanvas.width = squareSize;
+        metricsRegionCanvas.height = squareSize;
+      }
+
+      drawMetricsRegionOverlay(metricsRegionCtx, squareSize);
+      metricsRegionCanvas.classList.remove('hidden');
+    }
+
     function updateQualityMetricsOverlay() {
       if (!appSettings.qualityMetrics?.focusScore) {
         resetFocusScoreHistory();
         focusScoreLabel.classList.add('hidden');
       }
+      if (!appSettings.qualityMetrics?.showHistogram) {
+        histogramOverlay.classList.add('hidden');
+        maxPixelCountLabel.classList.add('hidden');
+      }
+      if (!qualityMetricsActive()) {
+        metricsRegionCanvas.classList.add('hidden');
+      }
     }
 
-    function updateFocusScore(squareSize) {
+    function updateFocusScore(cropped) {
       if (!appSettings.qualityMetrics?.focusScore) {
         resetFocusScoreHistory();
         focusScoreLabel.classList.add('hidden');
         return;
       }
 
-      const cropped = cropCtx.getImageData(0, 0, squareSize, squareSize);
       recordFocusScore(computeFocusScore(cropped));
       focusScoreLabel.textContent = formatFocusScore(getSmoothedFocusScore());
       focusScoreLabel.classList.remove('hidden');
+    }
+
+    function updateHistogram(cropped) {
+      if (!appSettings.qualityMetrics?.showHistogram) {
+        histogramOverlay.classList.add('hidden');
+        maxPixelCountLabel.classList.add('hidden');
+        return;
+      }
+
+      const bins = computeGrayscaleHistogram(cropped);
+      const topBrightness = topBrightnessFromHistogram(bins, BRIGHTNESS_TOP_RANK);
+      drawHistogram(
+        histogramCtx,
+        bins,
+        histogramCanvas.width,
+        histogramCanvas.height
+      );
+      maxPixelCountLabel.textContent = formatMaxPixelCount(topBrightness);
+      maxPixelCountLabel.classList.remove('hidden');
+      histogramOverlay.classList.remove('hidden');
+    }
+
+    function updateQualityMetrics(metricsSample) {
+      if (!metricsSample) {
+        updateQualityMetricsOverlay();
+        return;
+      }
+
+      updateFocusScore(metricsSample);
+      updateHistogram(metricsSample);
+    }
+
+    function sampleQualityMetrics(cropCanvas) {
+      if (!qualityMetricsActive()) {
+        return null;
+      }
+
+      return sampleCenterRegionFromCanvas(cropCanvas);
     }
 
     function applyStoredSettings() {
@@ -811,7 +913,7 @@
         0, 0, squareSize, squareSize
       );
 
-      updateFocusScore(squareSize);
+      const metricsSample = sampleQualityMetrics(cropCanvas);
 
       zoomCtx.clearRect(0, 0, squareSize, squareSize);
 
@@ -819,6 +921,8 @@
         zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
         scheduleBarcodeDetection(cropCanvas, appSettings);
         drawBarcodeOverlay(zoomCtx, getLastBarcodeResult(), squareSize);
+        updateQualityMetrics(metricsSample);
+        updateMetricsRegionOverlay(squareSize);
         return;
       }
 
@@ -829,16 +933,24 @@
         if (hasPlanarReference()) {
           drawPlanarTrackingStatus(zoomCtx, tracking, squareSize);
         }
+        updateQualityMetrics(metricsSample);
+        updateMetricsRegionOverlay(squareSize);
         return;
       }
 
       syncProcessingState();
 
-      const cropped = cropCtx.getImageData(0, 0, squareSize, squareSize);
-      const processed = applyImageProcessing(cropped, appSettings);
-      cropCtx.putImageData(processed, 0, 0);
+      if (appSettings.imageProcessing === 'none') {
+        zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
+      } else {
+        const cropped = cropCtx.getImageData(0, 0, squareSize, squareSize);
+        const processed = applyImageProcessing(cropped, appSettings);
+        cropCtx.putImageData(processed, 0, 0);
+        zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
+      }
 
-      zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
+      updateQualityMetrics(metricsSample);
+      updateMetricsRegionOverlay(squareSize);
     }
 
     function savePng() {

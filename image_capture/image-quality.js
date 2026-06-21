@@ -1,8 +1,11 @@
 const FOCUS_REGION_SIZE = 200;
 const FOCUS_TOP_RANK = 100;
+const BRIGHTNESS_TOP_RANK = 100;
 const FOCUS_AVERAGE_WINDOW_MS = 1000;
 
 const focusScoreHistory = [];
+let metricsSampleCanvas = null;
+let metricsSampleCtx = null;
 const GAUSSIAN_3X3 = [
   1, 2, 1,
   2, 4, 2,
@@ -10,12 +13,43 @@ const GAUSSIAN_3X3 = [
 ];
 const GAUSSIAN_3X3_SUM = 16;
 
-function computeFocusScore(imageData) {
-  const { data, width, height } = imageData;
+function getCenterRegionBounds(width, height) {
   const regionW = Math.min(FOCUS_REGION_SIZE, width);
   const regionH = Math.min(FOCUS_REGION_SIZE, height);
-  const startX = Math.floor((width - regionW) / 2);
-  const startY = Math.floor((height - regionH) / 2);
+  return {
+    startX: Math.floor((width - regionW) / 2),
+    startY: Math.floor((height - regionH) / 2),
+    regionW,
+    regionH
+  };
+}
+
+function sampleCenterRegionFromCanvas(sourceCanvas) {
+  const width = sourceCanvas.width;
+  const height = sourceCanvas.height;
+  const { startX, startY, regionW, regionH } = getCenterRegionBounds(width, height);
+
+  if (!metricsSampleCanvas) {
+    metricsSampleCanvas = document.createElement('canvas');
+    metricsSampleCtx = metricsSampleCanvas.getContext('2d', { willReadFrequently: true });
+  }
+  if (metricsSampleCanvas.width !== regionW || metricsSampleCanvas.height !== regionH) {
+    metricsSampleCanvas.width = regionW;
+    metricsSampleCanvas.height = regionH;
+  }
+
+  metricsSampleCtx.drawImage(
+    sourceCanvas,
+    startX, startY, regionW, regionH,
+    0, 0, regionW, regionH
+  );
+
+  return metricsSampleCtx.getImageData(0, 0, regionW, regionH);
+}
+
+function computeFocusScore(imageData) {
+  const { data, width, height } = imageData;
+  const { startX, startY, regionW, regionH } = getCenterRegionBounds(width, height);
   const gray = extractCenterGray(data, width, startX, startY, regionW, regionH);
   const blurred = applyGaussianBlur3x3(gray, regionW, regionH);
   const histogram = new Map();
@@ -125,6 +159,87 @@ function getSmoothedFocusScore() {
 
 function resetFocusScoreHistory() {
   focusScoreHistory.length = 0;
+}
+
+function computeGrayscaleHistogram(imageData) {
+  const { data, width, height } = imageData;
+  const { startX, startY, regionW, regionH } = getCenterRegionBounds(width, height);
+  const bins = new Uint32Array(256);
+
+  for (let y = 0; y < regionH; y++) {
+    for (let x = 0; x < regionW; x++) {
+      const srcIdx = ((startY + y) * width + (startX + x)) * 4;
+      const gray = Math.round(grayscaleFromRgb(data, srcIdx));
+      bins[clamp(gray, 0, 255)]++;
+    }
+  }
+
+  return bins;
+}
+
+function drawHistogram(ctx, bins, canvasWidth, canvasHeight) {
+  const padding = 6;
+  const plotW = canvasWidth - padding * 2;
+  const plotH = canvasHeight - padding * 2;
+  let max = 0;
+
+  for (let i = 0; i < 256; i++) {
+    if (bins[i] > max) max = bins[i];
+  }
+  if (max === 0) max = 1;
+
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(padding + 0.5, padding + 0.5, plotW - 1, plotH - 1);
+
+  ctx.fillStyle = 'rgba(96, 165, 250, 0.9)';
+  const barW = plotW / 256;
+  for (let i = 0; i < 256; i++) {
+    const barH = (bins[i] / max) * plotH;
+    if (barH <= 0) continue;
+    ctx.fillRect(
+      padding + i * barW,
+      padding + plotH - barH,
+      Math.max(barW, 0.75),
+      barH
+    );
+  }
+}
+
+function topBrightnessFromHistogram(bins, rank) {
+  let count = 0;
+
+  for (let level = 255; level >= 0; level--) {
+    count += bins[level];
+    if (count >= rank) {
+      return level;
+    }
+  }
+
+  return 0;
+}
+
+function formatMaxPixelCount(brightness) {
+  return `Max Pixel Count · ${brightness}`;
+}
+
+function drawMetricsRegionOverlay(ctx, squareSize) {
+  const { regionW } = getCenterRegionBounds(squareSize, squareSize);
+  const radius = regionW / 2;
+  const center = squareSize / 2;
+
+  ctx.clearRect(0, 0, squareSize, squareSize);
+  ctx.setLineDash([8, 6]);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(center, center, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 function formatFocusScore(score) {
