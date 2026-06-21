@@ -395,56 +395,6 @@
       cursor: not-allowed;
     }
 
-    footer {
-      padding: 0.75rem 1rem 0;
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    .footer-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .action-btn {
-      flex: 1;
-      padding: 0.9rem 0.75rem;
-      font-size: 0.95rem;
-      font-weight: 600;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      touch-action: manipulation;
-      transition: background 0.15s;
-    }
-
-    .save-btn {
-      color: #fff;
-      background: var(--accent);
-    }
-
-    .save-btn:active {
-      background: var(--accent-pressed);
-    }
-
-    .save-btn:disabled,
-    .action-btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    .secondary-btn {
-      color: var(--text);
-      background: var(--surface);
-      border: 1px solid #333;
-    }
-
-    .secondary-btn:active {
-      background: #1f1f1f;
-    }
-
     .hidden {
       display: none !important;
     }
@@ -553,12 +503,6 @@
     </section>
   </main>
 
-  <footer>
-    <div class="footer-actions">
-      <button class="action-btn save-btn" id="saveBtn" type="button" disabled>Save PNG</button>
-    </div>
-  </footer>
-
   <video id="video" playsinline autoplay muted></video>
   <canvas id="cropCanvas" hidden></canvas>
 
@@ -576,7 +520,6 @@
     const zoomCtx = zoomCanvas.getContext('2d');
     const statsEl = document.getElementById('stats');
     const errorEl = document.getElementById('error');
-    const saveBtn = document.getElementById('saveBtn');
     const captureBtn = document.getElementById('captureBtn');
     const savedFilenameField = document.getElementById('savedFilenameField');
     const backBtn = document.getElementById('backBtn');
@@ -828,8 +771,10 @@
     function applyStoredSettings() {
       const previousResolution = appSettings.imageResolution;
       const previousMagnification = Number(appSettings.imageMagnification);
+      const previousCamera = appSettings.cameraSelection;
       appSettings = loadSettings();
       appSettings.imageMagnification = normalizeImageMagnification(appSettings.imageMagnification);
+      appSettings.cameraSelection = normalizeCameraSelection(appSettings.cameraSelection);
       updatePageTitle();
       applyCropSize(appSettings.cropSize);
       syncProcessingState();
@@ -837,7 +782,8 @@
       updateStats();
       return {
         resolutionChanged: previousResolution !== appSettings.imageResolution,
-        magnificationChanged: previousMagnification !== appSettings.imageMagnification
+        magnificationChanged: previousMagnification !== appSettings.imageMagnification,
+        cameraChanged: previousCamera !== appSettings.cameraSelection
       };
     }
 
@@ -856,9 +802,20 @@
     async function restartCamera() {
       stopRenderLoops();
       video.srcObject?.getTracks?.().forEach((t) => t.stop());
-      saveBtn.disabled = true;
       captureBtn.disabled = true;
       await init();
+    }
+
+    async function storeCameraOptionsForSettings() {
+      if (!video.srcObject) {
+        return;
+      }
+
+      try {
+        await refreshAndStoreCameraOptions();
+      } catch (err) {
+        console.error('Failed to enumerate cameras:', err);
+      }
     }
 
     function showError(message) {
@@ -880,11 +837,16 @@
         : 'Max resolution · unavailable';
     }
 
-    async function getMaxResolutionStream() {
-      const temp = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
+    async function openCameraStream(videoConstraints) {
+      return navigator.mediaDevices.getUserMedia({
+        video: videoConstraints,
         audio: false
       });
+    }
+
+    async function getMaxResolutionStream() {
+      const cameraSelection = normalizeCameraSelection(appSettings.cameraSelection);
+      const temp = await openCameraStream(buildVideoConstraintsForCamera(cameraSelection));
       const track = temp.getVideoTracks()[0];
       const caps = track.getCapabilities?.() ?? {};
 
@@ -895,37 +857,30 @@
       const requested = getRequestedResolution(appSettings.imageResolution, maxWidth, maxHeight);
       const magnification = normalizeImageMagnification(appSettings.imageMagnification);
 
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: requested.width },
-            height: { ideal: requested.height },
-            zoom: magnification
-          },
-          audio: false
-        });
-      } catch {
+      const attempts = [
+        buildVideoConstraintsForCamera(cameraSelection, {
+          width: { ideal: requested.width },
+          height: { ideal: requested.height },
+          zoom: magnification
+        }),
+        buildVideoConstraintsForCamera(cameraSelection, {
+          width: { ideal: requested.width },
+          height: { ideal: requested.height },
+          advanced: [{ zoom: magnification }]
+        }),
+        buildVideoConstraintsForCamera(cameraSelection)
+      ];
+
+      for (const videoConstraints of attempts) {
         try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              facingMode: { ideal: 'environment' },
-              width: { ideal: requested.width },
-              height: { ideal: requested.height },
-              advanced: [{ zoom: magnification }]
-            },
-            audio: false
-          });
+          const stream = await openCameraStream(videoConstraints);
+          return { stream, maxWidth, maxHeight };
         } catch {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' },
-            audio: false
-          });
+          // Try the next constraint format supported by this browser.
         }
       }
 
-      return { stream, maxWidth, maxHeight };
+      throw new Error('Could not open the selected camera.');
     }
 
     async function applyZoom(track) {
@@ -1146,7 +1101,6 @@
       }
 
       saveInProgress = true;
-      saveBtn.disabled = true;
       captureBtn.disabled = true;
 
       const filename = buildImageFilename(appSettings);
@@ -1194,7 +1148,6 @@
       } finally {
         saveInProgress = false;
         if (cameraReady) {
-          saveBtn.disabled = false;
           captureBtn.disabled = false;
         }
       }
@@ -1221,9 +1174,9 @@
         });
 
         updateStats();
-        saveBtn.disabled = false;
         captureBtn.disabled = false;
         startRenderLoops();
+        await storeCameraOptionsForSettings();
 
         if (appSettings.imageProcessing === 'barcodeDetection') {
           setTimeout(() => enableBarcodeDetection(), 1000);
@@ -1236,7 +1189,6 @@
       }
     }
 
-    saveBtn.addEventListener('click', savePng);
     captureBtn.addEventListener('click', savePng);
 
     function isPageFullscreenSupported() {
@@ -1294,7 +1246,8 @@
       window.location.href = '../index.html';
     });
 
-    menuBtn.addEventListener('click', () => {
+    menuBtn.addEventListener('click', async () => {
+      await storeCameraOptionsForSettings();
       window.location.href = 'settings.html';
     });
 
@@ -1308,8 +1261,8 @@
     }
 
     window.addEventListener('pageshow', async (event) => {
-      const { resolutionChanged } = applyStoredSettings();
-      if (resolutionChanged || event.persisted) {
+      const { resolutionChanged, cameraChanged } = applyStoredSettings();
+      if (resolutionChanged || cameraChanged || event.persisted) {
         await restartCamera();
       } else {
         await applyZoomToActiveTrack();

@@ -179,6 +179,13 @@
       display: none;
     }
 
+    .camera-status {
+      padding: 0.85rem 1rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      border-top: 1px solid #222;
+    }
+
     .toggle-option {
       display: flex;
       align-items: center;
@@ -263,6 +270,11 @@
           spellcheck="false"
         >
       </div>
+    </div>
+
+    <div class="setting-group" id="cameraSettings">
+      <h2>Camera</h2>
+      <div id="cameraOptions"></div>
     </div>
 
     <div class="setting-group">
@@ -462,6 +474,72 @@
     const blendRatioSetting = document.getElementById('blendRatioSetting');
     const barcodeSettings = document.getElementById('barcodeSettings');
     const barcodeFormatSettings = document.getElementById('barcodeFormatSettings');
+    const cameraOptions = document.getElementById('cameraOptions');
+    let availableCameraDeviceIds = [];
+
+    function createCameraOption(value, label, checked) {
+      const option = document.createElement('label');
+      option.className = 'option';
+
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'cameraSelection';
+      input.value = value;
+      input.checked = checked;
+
+      const text = document.createElement('span');
+      text.textContent = label;
+
+      option.appendChild(input);
+      option.appendChild(text);
+      return option;
+    }
+
+    function setCameraSelectionChecked(nextSettings) {
+      const selection = normalizeCameraSelection(
+        nextSettings.cameraSelection,
+        availableCameraDeviceIds
+      );
+
+      document.querySelectorAll('input[name="cameraSelection"]').forEach((input) => {
+        input.checked = input.value === selection;
+      });
+    }
+
+    function populateCameraOptions() {
+      const devices = loadCameraOptions();
+      availableCameraDeviceIds = devices.map((device) => device.deviceId);
+      const selection = normalizeCameraSelection(
+        settings.cameraSelection,
+        availableCameraDeviceIds
+      );
+
+      cameraOptions.textContent = '';
+
+      CAMERA_FACING_OPTIONS.forEach((facing) => {
+        cameraOptions.appendChild(createCameraOption(
+          facing,
+          CAMERA_FACING_LABELS[facing],
+          selection === facing
+        ));
+      });
+
+      devices.forEach((device) => {
+        const value = buildCameraDeviceSelectionId(device.deviceId);
+        cameraOptions.appendChild(createCameraOption(
+          value,
+          device.label,
+          selection === value
+        ));
+      });
+
+      if (devices.length === 0) {
+        const status = document.createElement('p');
+        status.className = 'camera-status';
+        status.textContent = 'Open settings from the capture page to list device cameras.';
+        cameraOptions.appendChild(status);
+      }
+    }
 
     function applySettingsToForm(nextSettings) {
       imageLabelInput.value = nextSettings.imageLabel || DEFAULT_IMAGE_LABEL;
@@ -497,6 +575,7 @@
         input.checked = input.value === nextSettings.barcodeFormat;
       });
 
+      setCameraSelectionChecked(nextSettings);
       updateProcessingSubSettings();
     }
 
@@ -540,6 +619,10 @@
       const barcodeDecoder = decoder ? decoder.value : DEFAULT_BARCODE_DECODER;
       const format = document.querySelector('input[name="barcodeFormat"]:checked');
       const barcodeFormat = format ? format.value : DEFAULT_BARCODE_FORMAT;
+      const camera = document.querySelector('input[name="cameraSelection"]:checked');
+      const cameraSelection = camera
+        ? normalizeCameraSelection(camera.value, availableCameraDeviceIds)
+        : DEFAULT_CAMERA_SELECTION;
       const imageLabel = imageLabelInput.value;
       const labelChanged = imageLabel !== (settings.imageLabel ?? '');
       const imageCounter = labelChanged ? DEFAULT_IMAGE_COUNTER : settings.imageCounter;
@@ -552,6 +635,7 @@
         imageLabel,
         imageCounter,
         imageResolution,
+        cameraSelection,
         imageMagnification,
         cropSize,
         qualityMetrics,
@@ -576,6 +660,8 @@
     document.getElementById('backBtn').addEventListener('click', confirmSettings);
     document.getElementById('topConfirmBtn').addEventListener('click', confirmSettings);
     document.getElementById('setDefaultBtn').addEventListener('click', resetSettings);
+
+    populateCameraOptions();
   </script>
 </body>
 </html>

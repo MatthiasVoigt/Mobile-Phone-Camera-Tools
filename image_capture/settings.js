@@ -1,4 +1,5 @@
 const SETTINGS_KEY = 'experiment1-settings';
+const CAMERA_OPTIONS_KEY = 'experiment1-camera-options';
 const DEFAULT_IMAGE_LABEL = 'Item_01';
 const DEFAULT_IMAGE_COUNTER = 1;
 const DEFAULT_CROP_SIZE = 800;
@@ -55,6 +56,13 @@ const DEFAULT_QUALITY_METRICS = {
 };
 const IMAGE_MAGNIFICATION_OPTIONS = [1, 2, 3, 4, 6, 8];
 const DEFAULT_IMAGE_MAGNIFICATION = 2;
+const DEFAULT_CAMERA_SELECTION = 'environment';
+const CAMERA_FACING_OPTIONS = ['environment', 'user'];
+const CAMERA_FACING_LABELS = {
+  environment: 'Environment facing',
+  user: 'Front facing'
+};
+const CAMERA_DEVICE_PREFIX = 'device:';
 function getBarcodeFormatConfig(formatId) {
   return BARCODE_FORMATS.find((format) => format.id === formatId) ||
     BARCODE_FORMATS.find((format) => format.id === DEFAULT_BARCODE_FORMAT);
@@ -123,6 +131,131 @@ function formatMagnificationLabel(value) {
   return `${Number(value)}×`;
 }
 
+function isDeviceCameraSelection(value) {
+  return typeof value === 'string' && value.startsWith(CAMERA_DEVICE_PREFIX);
+}
+
+function getCameraDeviceId(selection) {
+  return isDeviceCameraSelection(selection) ? selection.slice(CAMERA_DEVICE_PREFIX.length) : null;
+}
+
+function buildCameraDeviceSelectionId(deviceId) {
+  return `${CAMERA_DEVICE_PREFIX}${deviceId}`;
+}
+
+function normalizeCameraSelection(value, availableDeviceIds = null) {
+  if (CAMERA_FACING_OPTIONS.includes(value)) {
+    return value;
+  }
+
+  if (isDeviceCameraSelection(value)) {
+    const deviceId = getCameraDeviceId(value);
+    if (!deviceId) {
+      return DEFAULT_CAMERA_SELECTION;
+    }
+
+    if (!availableDeviceIds || availableDeviceIds.includes(deviceId)) {
+      return value;
+    }
+  }
+
+  return DEFAULT_CAMERA_SELECTION;
+}
+
+function getCameraSelectionLabel(selection, deviceLabel = '') {
+  if (selection === 'environment' || selection === 'user') {
+    return CAMERA_FACING_LABELS[selection];
+  }
+
+  if (isDeviceCameraSelection(selection)) {
+    const trimmed = String(deviceLabel ?? '').trim();
+    return trimmed || 'Camera';
+  }
+
+  return CAMERA_FACING_LABELS[DEFAULT_CAMERA_SELECTION];
+}
+
+function formatCameraDeviceLabel(device, index) {
+  const label = String(device?.label ?? '').trim();
+  if (label) {
+    return label;
+  }
+
+  return `Camera ${index + 1}`;
+}
+
+function buildVideoConstraintsForCamera(selection, extras = {}) {
+  const video = { ...extras };
+  const normalized = normalizeCameraSelection(selection);
+  const deviceId = getCameraDeviceId(normalized);
+
+  if (deviceId) {
+    delete video.facingMode;
+    video.deviceId = extras.deviceId ?? { exact: deviceId };
+    return video;
+  }
+
+  if (normalized === 'user') {
+    video.facingMode = extras.facingMode ?? { ideal: 'user' };
+    return video;
+  }
+
+  video.facingMode = extras.facingMode ?? { ideal: 'environment' };
+  return video;
+}
+
+async function listVideoInputDevices() {
+  if (!navigator.mediaDevices?.enumerateDevices) {
+    return [];
+  }
+
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  return devices.filter((device) => device.kind === 'videoinput');
+}
+
+function serializeCameraOptions(devices) {
+  return devices.map((device, index) => ({
+    deviceId: device.deviceId,
+    label: formatCameraDeviceLabel(device, index)
+  }));
+}
+
+function loadCameraOptions() {
+  try {
+    const raw = sessionStorage.getItem(CAMERA_OPTIONS_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((device) =>
+      device &&
+      typeof device.deviceId === 'string' &&
+      device.deviceId &&
+      typeof device.label === 'string'
+    );
+  } catch {
+    return [];
+  }
+}
+
+function saveCameraOptions(devices) {
+  sessionStorage.setItem(
+    CAMERA_OPTIONS_KEY,
+    JSON.stringify(serializeCameraOptions(devices))
+  );
+}
+
+async function refreshAndStoreCameraOptions() {
+  const devices = await listVideoInputDevices();
+  saveCameraOptions(devices);
+  return devices;
+}
+
 function getRequestedResolution(imageResolution, maxWidth, maxHeight) {
   if (imageResolution === 'max' || !IMAGE_RESOLUTION_PRESETS[imageResolution]) {
     return {
@@ -140,6 +273,7 @@ function getDefaultSettings() {
     imageLabel: DEFAULT_IMAGE_LABEL,
     imageCounter: DEFAULT_IMAGE_COUNTER,
     imageResolution: DEFAULT_IMAGE_RESOLUTION,
+    cameraSelection: DEFAULT_CAMERA_SELECTION,
     imageMagnification: DEFAULT_IMAGE_MAGNIFICATION,
     cropSize: DEFAULT_CROP_SIZE,
     qualityMetrics: { ...DEFAULT_QUALITY_METRICS },
@@ -187,6 +321,7 @@ function loadSettings() {
         ? Math.floor(imageCounter)
         : DEFAULT_IMAGE_COUNTER,
       imageResolution,
+      cameraSelection: normalizeCameraSelection(parsed.cameraSelection),
       imageMagnification: normalizeImageMagnification(
         parsed.imageMagnification ?? DEFAULT_IMAGE_MAGNIFICATION
       ),
