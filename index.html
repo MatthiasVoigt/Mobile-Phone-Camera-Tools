@@ -93,6 +93,16 @@
       line-height: 1.4;
       color: var(--muted);
     }
+
+    .tool-features {
+      margin-top: 0.5rem;
+      padding-left: 1.15rem;
+      list-style: disc;
+    }
+
+    .tool-features li + li {
+      margin-top: 0.3rem;
+    }
   </style>
 </head>
 <body>
@@ -105,8 +115,15 @@
     <ul class="tool-list">
       <li>
         <a class="tool-link" href="image_capture/image_capture.html">
-          <span class="tool-title">Image Capture</span>
-          <span class="tool-description">Capture cropped images and save them with custom filenames at maximum camera resolution.</span>
+          <span class="tool-title">Image Capture / Image Data Collection</span>
+          <span class="tool-description">
+            Capture sharp, labeled photos at full camera resolution.
+            <ul class="tool-features">
+              <li>Save images with custom filenames so you can identify different items and item classes.</li>
+              <li>Crop to the center of the frame during capture, keeping only the important detail.</li>
+              <li>Use the live focus score to see when you are too close and the image would be blurry.</li>
+            </ul>
+          </span>
         </a>
       </li>
     </ul>

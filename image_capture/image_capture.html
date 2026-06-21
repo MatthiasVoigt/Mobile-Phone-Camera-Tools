@@ -1283,6 +1283,19 @@
     captureBtn.addEventListener('click', savePng);
     chooseRefBtn.addEventListener('click', captureReferenceImage);
 
+    function isPageFullscreenSupported() {
+      const root = document.documentElement;
+      if (typeof root.requestFullscreen === 'function') {
+        return true;
+      }
+
+      if (typeof root.webkitRequestFullscreen !== 'function') {
+        return false;
+      }
+
+      return !/iPhone|iPod/i.test(navigator.userAgent);
+    }
+
     function isFullscreen() {
       return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
     }
@@ -1329,10 +1342,14 @@
       window.location.href = 'settings.html';
     });
 
-    fullscreenBtn.addEventListener('click', toggleFullscreen);
-    document.addEventListener('fullscreenchange', updateFullscreenButton);
-    document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
-    updateFullscreenButton();
+    if (isPageFullscreenSupported()) {
+      fullscreenBtn.addEventListener('click', toggleFullscreen);
+      document.addEventListener('fullscreenchange', updateFullscreenButton);
+      document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+      updateFullscreenButton();
+    } else {
+      fullscreenBtn.classList.add('hidden');
+    }
 
     window.addEventListener('pageshow', async (event) => {
       const { resolutionChanged } = applyStoredSettings();
