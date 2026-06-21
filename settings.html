@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="icon" href="data:,">
+  <title>Settings · Experiment 1</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --text: #f0f0f0;
+      --muted: #888;
+      --accent: #3b82f6;
+      --accent-pressed: #2563eb;
+      --border: #333;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      padding-top: var(--safe-top);
+      padding-bottom: calc(1rem + var(--safe-bottom));
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #1e1e1e;
+      flex-shrink: 0;
+    }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      margin-right: 0.5rem;
+      background: none;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+      border-radius: 8px;
+      touch-action: manipulation;
+    }
+
+    .back-btn:active { background: var(--surface); }
+
+    .top-bar h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    main {
+      flex: 1;
+      padding: 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .setting-group {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .setting-group h2 {
+      padding: 0.85rem 1rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .option {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border-top: 1px solid #222;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .option:first-of-type { border-top: none; }
+
+    .option input {
+      width: 1.15rem;
+      height: 1.15rem;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .option span {
+      font-size: 1rem;
+    }
+
+    .sub-setting {
+      padding: 0.85rem 1rem 1rem;
+      border-top: 1px solid #222;
+    }
+
+    .sub-setting label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+
+    .sub-setting input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .sub-setting.hidden {
+      display: none;
+    }
+
+    footer {
+      padding: 0.75rem 1rem 0;
+      flex-shrink: 0;
+    }
+
+    .confirm-btn {
+      width: 100%;
+      padding: 0.9rem 1.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .confirm-btn:active { background: var(--accent-pressed); }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <button class="back-btn" id="backBtn" type="button" aria-label="Back">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+    </button>
+    <h1>Settings</h1>
+  </div>
+
+  <main>
+    <div class="setting-group">
+      <h2>Center crop size</h2>
+      <label class="option">
+        <input type="radio" name="cropSize" value="500">
+        <span>500 × 500</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="cropSize" value="800">
+        <span>800 × 800</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="cropSize" value="1000">
+        <span>1000 × 1000</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="cropSize" value="1500">
+        <span>1500 × 1500</span>
+      </label>
+    </div>
+
+    <div class="setting-group">
+      <h2>Image processing</h2>
+      <label class="option">
+        <input type="radio" name="imageProcessing" value="none">
+        <span>None (RGB)</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageProcessing" value="edgeMap">
+        <span>Edge map</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageProcessing" value="movingAverage">
+        <span>Moving average</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageProcessing" value="changeDetection">
+        <span>Change detection</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageProcessing" value="barcodeDetection">
+        <span>Barcode detection</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageProcessing" value="planarTracking">
+        <span>Planar tracking</span>
+      </label>
+      <div class="sub-setting hidden" id="blendRatioSetting">
+        <label for="movingAverageRatio">
+          <span>Current frame mix</span>
+          <span id="movingAverageRatioValue">0.5</span>
+        </label>
+        <input type="range" id="movingAverageRatio" min="0" max="100" step="1" value="50">
+      </div>
+    </div>
+
+    <div class="setting-group hidden" id="barcodeSettings">
+      <h2>Barcode decoder</h2>
+      <label class="option">
+        <input type="radio" name="barcodeDecoder" value="barcodeDetector">
+        <span>BarcodeDetector</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeDecoder" value="zxingHybrid">
+        <span>ZXing Bitmap (Hybrid)</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeDecoder" value="zxingGlobal">
+        <span>ZXing Bitmap (Global)</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeDecoder" value="zxingImage">
+        <span>ZXing Image</span>
+      </label>
+    </div>
+
+    <div class="setting-group hidden" id="barcodeFormatSettings">
+      <h2>Barcode code type</h2>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="data_matrix">
+        <span>Data Matrix</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="qr_code">
+        <span>QR Code</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="aztec">
+        <span>Aztec</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="pdf417">
+        <span>PDF417</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="ean_13">
+        <span>EAN-13</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="ean_8">
+        <span>EAN-8</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="code_128">
+        <span>Code 128</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="code_39">
+        <span>Code 39</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="code_93">
+        <span>Code 93</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="upc_a">
+        <span>UPC-A</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="upc_e">
+        <span>UPC-E</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="itf">
+        <span>ITF</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="codabar">
+        <span>Codabar</span>
+      </label>
+    </div>
+  </main>
+
+  <footer>
+    <button class="confirm-btn" id="confirmBtn" type="button">Confirm</button>
+  </footer>
+
+  <script src="settings.js"></script>
+  <script>
+    const settings = loadSettings();
+    const selected = document.querySelector(`input[name="cropSize"][value="${settings.cropSize}"]`);
+    if (selected) selected.checked = true;
+
+    const processingChoice = document.querySelector(
+      `input[name="imageProcessing"][value="${settings.imageProcessing}"]`
+    );
+    if (processingChoice) processingChoice.checked = true;
+
+    const ratioInput = document.getElementById('movingAverageRatio');
+    const ratioValue = document.getElementById('movingAverageRatioValue');
+    const blendRatioSetting = document.getElementById('blendRatioSetting');
+    const barcodeSettings = document.getElementById('barcodeSettings');
+    const barcodeFormatSettings = document.getElementById('barcodeFormatSettings');
+
+    ratioInput.value = movingAverageRatioToSlider(settings.movingAverageRatio);
+    ratioValue.textContent = formatMovingAverageRatio(settings.movingAverageRatio);
+
+    const decoderChoice = document.querySelector(
+      `input[name="barcodeDecoder"][value="${settings.barcodeDecoder}"]`
+    );
+    if (decoderChoice) decoderChoice.checked = true;
+
+    const formatChoice = document.querySelector(
+      `input[name="barcodeFormat"][value="${settings.barcodeFormat}"]`
+    );
+    if (formatChoice) formatChoice.checked = true;
+
+    function updateProcessingSubSettings() {
+      const mode = document.querySelector('input[name="imageProcessing"]:checked')?.value;
+      const showRatio = mode === 'movingAverage' || mode === 'changeDetection';
+      const showBarcode = mode === 'barcodeDetection';
+      blendRatioSetting.classList.toggle('hidden', !showRatio);
+      barcodeSettings.classList.toggle('hidden', !showBarcode);
+      barcodeFormatSettings.classList.toggle('hidden', !showBarcode);
+    }
+
+    updateProcessingSubSettings();
+
+    document.querySelectorAll('input[name="imageProcessing"]').forEach((input) => {
+      input.addEventListener('change', updateProcessingSubSettings);
+    });
+
+    ratioInput.addEventListener('input', () => {
+      const ratio = sliderToMovingAverageRatio(Number(ratioInput.value));
+      ratioValue.textContent = formatMovingAverageRatio(ratio);
+    });
+
+    function goBack() {
+      window.location.href = 'index.html';
+    }
+
+    document.getElementById('backBtn').addEventListener('click', goBack);
+
+    document.getElementById('confirmBtn').addEventListener('click', () => {
+      const choice = document.querySelector('input[name="cropSize"]:checked');
+      const cropSize = choice ? Number(choice.value) : DEFAULT_CROP_SIZE;
+      const processing = document.querySelector('input[name="imageProcessing"]:checked');
+      const imageProcessing = processing ? processing.value : 'none';
+      const movingAverageRatio = sliderToMovingAverageRatio(Number(ratioInput.value));
+      const decoder = document.querySelector('input[name="barcodeDecoder"]:checked');
+      const barcodeDecoder = decoder ? decoder.value : DEFAULT_BARCODE_DECODER;
+      const format = document.querySelector('input[name="barcodeFormat"]:checked');
+      const barcodeFormat = format ? format.value : DEFAULT_BARCODE_FORMAT;
+
+      saveSettings({
+        cropSize,
+        imageProcessing,
+        movingAverageRatio,
+        barcodeDecoder,
+        barcodeFormat
+      });
+      goBack();
+    });
+  </script>
+</body>
+</html>
