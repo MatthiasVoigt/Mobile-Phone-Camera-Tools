@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="icon" href="data:,">
+  <title>Object Tracking</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --text: #f0f0f0;
+      --muted: #888;
+      --accent: #3b82f6;
+      --accent-pressed: #2563eb;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      padding-bottom: calc(1rem + var(--safe-bottom));
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 0 0 0.75rem;
+    }
+
+    .wide-section { flex-shrink: 0; }
+
+    .wide-view {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: var(--surface);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .wide-view canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 9;
+    }
+
+    .wide-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .wide-overlay-top {
+      padding: calc(0.65rem + var(--safe-top)) 0.85rem 1rem;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.72), transparent);
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-height: 2.5rem;
+    }
+
+    .overlay-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 2.5rem;
+      height: 2.5rem;
+      background: rgba(0, 0, 0, 0.35);
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      border-radius: 8px;
+      touch-action: manipulation;
+      pointer-events: auto;
+    }
+
+    .overlay-btn:active { background: rgba(0, 0, 0, 0.55); }
+
+    .page-title {
+      flex: 1;
+      text-align: center;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    }
+
+    .stats,
+    .overlay-metrics {
+      margin-top: 0.35rem;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.75);
+      line-height: 1.4;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    .overlay-metrics {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.15rem;
+    }
+
+    .zoom-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 0.75rem;
+    }
+
+    .zoom-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.35rem;
+    }
+
+    .zoom-view {
+      width: 100%;
+      max-width: min(100vw - 1.5rem, var(--crop-max, 800px));
+      aspect-ratio: 1 / 1;
+      background: var(--surface);
+      border: 1px solid #222;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .zoom-view canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1 / 1;
+    }
+
+    .zoom-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .zoom-overlay-top {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      padding: 0.65rem 0.85rem 1.5rem;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.72), transparent);
+    }
+
+    .zoom-overlay-top .zoom-label {
+      color: rgba(255, 255, 255, 0.8);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+      margin-bottom: 0;
+    }
+
+    .zoom-overlay-bottom {
+      display: flex;
+      justify-content: center;
+      padding: 1.5rem 0.85rem 1rem;
+      background: linear-gradient(to top, rgba(0,0,0,0.55), transparent);
+    }
+
+    .capture-btn {
+      pointer-events: auto;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .capture-btn:active:not(:disabled) {
+      background: var(--accent-pressed);
+    }
+
+    .capture-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .error {
+      margin: 0.75rem 1rem 0;
+      padding: 1rem;
+      background: #2a1010;
+      border: 1px solid #5c2020;
+      border-radius: 8px;
+      color: #f88;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .error.hidden,
+    .hidden {
+      display: none !important;
+    }
+
+    #video {
+      position: fixed;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="error hidden" id="errorEl"></p>
+
+    <section class="wide-section" aria-label="Live camera">
+      <div class="wide-view">
+        <canvas id="wideCanvas"></canvas>
+        <div class="wide-overlay">
+          <div class="wide-overlay-top">
+            <div class="top-bar">
+              <button class="overlay-btn menu-btn" id="menuBtn" type="button" aria-label="Settings">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <line x1="4" y1="7" x2="20" y2="7"/>
+                  <line x1="4" y1="12" x2="20" y2="12"/>
+                  <line x1="4" y1="17" x2="20" y2="17"/>
+                </svg>
+              </button>
+              <div class="page-title">Object Tracking</div>
+              <div style="width:2.5rem;flex-shrink:0;"></div>
+            </div>
+            <p class="stats" id="stats">Starting camera…</p>
+            <div class="overlay-metrics" id="topMetrics">
+              <span id="fpsMetric">FPS · —</span>
+              <span id="extractedMetric">Extracted · —</span>
+              <span id="matchedMetric">Matched · —</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="zoom-section" aria-label="Reference view">
+      <div class="zoom-view" id="zoomView">
+        <canvas id="centerCanvas"></canvas>
+        <div class="zoom-overlay">
+          <div class="zoom-overlay-top">
+            <span class="zoom-label" id="centerLabel">Center view · live crop</span>
+            <div class="overlay-metrics hidden" id="centerMetrics">
+              <span id="centerFeatureType">Feature · —</span>
+              <span id="centerFeatureConfig">Config · —</span>
+              <span id="centerFeatureCount">Features used · —</span>
+            </div>
+          </div>
+          <div class="zoom-overlay-bottom">
+            <button class="capture-btn" id="captureReferenceBtn" type="button" disabled>
+              Capture reference image
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <video id="video" playsinline autoplay muted></video>
+
+  <script src="settings.js"></script>
+  <script src="opencv-processing.js"></script>
+  <script>
+    const video = document.getElementById('video');
+    const wideCanvas = document.getElementById('wideCanvas');
+    const centerCanvas = document.getElementById('centerCanvas');
+    const wideCtx = wideCanvas.getContext('2d');
+    const statsEl = document.getElementById('stats');
+    const errorEl = document.getElementById('errorEl');
+    const centerLabel = document.getElementById('centerLabel');
+    const centerMetrics = document.getElementById('centerMetrics');
+    const centerFeatureType = document.getElementById('centerFeatureType');
+    const centerFeatureConfig = document.getElementById('centerFeatureConfig');
+    const centerFeatureCount = document.getElementById('centerFeatureCount');
+    const fpsMetric = document.getElementById('fpsMetric');
+    const extractedMetric = document.getElementById('extractedMetric');
+    const matchedMetric = document.getElementById('matchedMetric');
+    const captureReferenceBtn = document.getElementById('captureReferenceBtn');
+    const zoomView = document.getElementById('zoomView');
+    const menuBtn = document.getElementById('menuBtn');
+
+    let appSettings = loadTrackingSettings();
+    let activeStream = null;
+    let renderLoopActive = false;
+    let openCvLoadState = 'idle';
+    let referenceImageData = null;
+    let referenceFeatures = null;
+    let referenceAnnotatedImage = null;
+    let processingInFlight = false;
+    let trackingInFlight = false;
+    let lastTrackingResult = null;
+    let lastFrameTimestamp = 0;
+    let smoothedFps = 0;
+
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+      statsEl.textContent = 'Unavailable';
+    }
+
+    function clearError() {
+      errorEl.classList.add('hidden');
+      errorEl.textContent = '';
+    }
+
+    function setCenterLabel(text) {
+      centerLabel.textContent = text;
+    }
+
+    function updateCenterMetrics(features) {
+      if (!features || features.totalCount === 0) {
+        centerMetrics.classList.add('hidden');
+        return;
+      }
+
+      centerFeatureType.textContent = `Feature · ${getFeatureDetectorLabel(features.detectorId)}`;
+      centerFeatureConfig.textContent = `Config · ${features.configDescription}`;
+      centerFeatureCount.textContent = `Features used · ${features.totalCount} (${features.visualizedCount} shown)`;
+      centerMetrics.classList.remove('hidden');
+    }
+
+    function updateTopMetrics(trackingResult) {
+      fpsMetric.textContent = `FPS · ${smoothedFps > 0 ? smoothedFps.toFixed(1) : '—'}`;
+
+      if (!referenceFeatures) {
+        extractedMetric.textContent = 'Extracted · —';
+        matchedMetric.textContent = 'Matched · —';
+        return;
+      }
+
+      if (!trackingResult) {
+        extractedMetric.textContent = 'Extracted · —';
+        matchedMetric.textContent = 'Matched · —';
+        return;
+      }
+
+      extractedMetric.textContent = `Extracted · ${trackingResult.extractedCount}`;
+      matchedMetric.textContent = `Matched · ${trackingResult.matchedCount}`;
+    }
+
+    function updateFps() {
+      const now = performance.now();
+      if (lastFrameTimestamp > 0) {
+        const instantFps = 1000 / (now - lastFrameTimestamp);
+        smoothedFps = smoothedFps > 0 ? smoothedFps * 0.85 + instantFps * 0.15 : instantFps;
+      }
+      lastFrameTimestamp = now;
+    }
+
+    function clearTrackingFeatures() {
+      releaseReferenceFeatures(referenceFeatures);
+      referenceFeatures = null;
+      referenceAnnotatedImage = null;
+      lastTrackingResult = null;
+      centerMetrics.classList.add('hidden');
+    }
+
+    function updateReferenceButton() {
+      captureReferenceBtn.textContent = referenceImageData && referenceFeatures
+        ? 'Reset tracking features'
+        : 'Capture reference image';
+    }
+
+    function resetTracking() {
+      referenceImageData = null;
+      clearTrackingFeatures();
+      updateReferenceButton();
+      updateTopMetrics(null);
+    }
+
+    function applyCropMaxCss() {
+      zoomView.style.setProperty('--crop-max', `${appSettings.cropSize}px`);
+    }
+
+    function stopActiveStream() {
+      activeStream?.getTracks?.().forEach((track) => track.stop());
+      activeStream = null;
+      video.srcObject = null;
+    }
+
+    async function openCamera() {
+      stopActiveStream();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+
+      activeStream = stream;
+      video.srcObject = stream;
+      await video.play();
+    }
+
+    function drawWidePreview() {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh) return;
+
+      const displayW = wideCanvas.clientWidth || vw;
+      const displayH = Math.round(displayW * 9 / 16);
+      if (wideCanvas.width !== displayW || wideCanvas.height !== displayH) {
+        wideCanvas.width = displayW;
+        wideCanvas.height = displayH;
+      }
+
+      wideCtx.drawImage(video, 0, 0, displayW, displayH);
+
+      if (lastTrackingResult?.found) {
+        drawPerspectiveCross(
+          wideCtx,
+          lastTrackingResult,
+          displayW / vw,
+          displayH / vh
+        );
+      }
+    }
+
+    function drawLiveCenterCrop() {
+      const crop = captureCenterCrop(video, appSettings.cropSize);
+      if (!crop) return;
+      putImageDataOnCanvas(centerCanvas, crop);
+      return crop;
+    }
+
+    async function renderOpenCvTestFrame() {
+      const crop = captureCenterCrop(video, appSettings.cropSize);
+      if (!crop) return;
+
+      await loadOpenCv();
+      const blurred = applyBlurKernel3(crop);
+      putImageDataOnCanvas(centerCanvas, blurred);
+      setCenterLabel(`Center view · OpenCV blur · ${appSettings.cropSize} × ${appSettings.cropSize}`);
+      centerMetrics.classList.add('hidden');
+    }
+
+    async function buildReferenceFeatures() {
+      if (!referenceImageData) return;
+
+      await loadOpenCv();
+      releaseReferenceFeatures(referenceFeatures);
+      referenceFeatures = extractReferenceFeatures(referenceImageData, appSettings.featureDetector);
+
+      const visualizationKeypoints = getTopKeypoints(
+        referenceFeatures.keypointVector,
+        MAX_VISUALIZED_FEATURES
+      );
+      referenceAnnotatedImage = drawFeaturesOnImage(referenceImageData, visualizationKeypoints);
+      referenceFeatures.visualizedCount = visualizationKeypoints.length;
+      referenceFeatures.keypointVector?.delete?.();
+      referenceFeatures.keypointVector = null;
+    }
+
+    function renderReferenceView() {
+      if (!referenceImageData) return;
+
+      const imageToShow = referenceAnnotatedImage || referenceImageData;
+      putImageDataOnCanvas(centerCanvas, imageToShow);
+      setCenterLabel('Center view · reference image');
+      updateCenterMetrics(referenceFeatures);
+    }
+
+    async function renderCenterView() {
+      if (processingInFlight) return;
+      processingInFlight = true;
+
+      try {
+        if (referenceImageData) {
+          renderReferenceView();
+          return;
+        }
+
+        if (appSettings.testOpenCvIntegration) {
+          if (openCvLoadState === 'ready') {
+            await renderOpenCvTestFrame();
+          } else if (openCvLoadState === 'loading') {
+            drawLiveCenterCrop();
+            setCenterLabel('Center view · loading OpenCV…');
+          } else {
+            drawLiveCenterCrop();
+            setCenterLabel('Center view · OpenCV unavailable');
+          }
+          return;
+        }
+
+        drawLiveCenterCrop();
+        setCenterLabel(`Center view · live crop · ${appSettings.cropSize} × ${appSettings.cropSize}`);
+        centerMetrics.classList.add('hidden');
+      } catch (err) {
+        console.error('Center view render failed:', err);
+        showError(err.message || 'Failed to process image with OpenCV.');
+      } finally {
+        processingInFlight = false;
+      }
+    }
+
+    function updateStats() {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const openCvText = openCvLoadState === 'ready'
+        ? 'OpenCV ready'
+        : openCvLoadState === 'loading'
+          ? 'OpenCV loading'
+          : 'OpenCV not loaded';
+
+      if (!vw || !vh) {
+        statsEl.textContent = `${openCvText} · waiting for camera`;
+        return;
+      }
+
+      statsEl.textContent = `${openCvText} · ${vw} × ${vh} · crop ${appSettings.cropSize}`;
+    }
+
+    async function runTrackingStep() {
+      if (!referenceFeatures || trackingInFlight || openCvLoadState !== 'ready') {
+        return;
+      }
+
+      const frame = captureVideoFrame(video);
+      if (!frame) return;
+
+      trackingInFlight = true;
+      try {
+        lastTrackingResult = estimatePlanarPatternCenter(
+          referenceFeatures,
+          frame,
+          { width: referenceImageData.width, height: referenceImageData.height }
+        );
+      } catch (err) {
+        console.error('Tracking failed:', err);
+        lastTrackingResult = null;
+      } finally {
+        trackingInFlight = false;
+      }
+    }
+
+    async function renderFrame() {
+      updateFps();
+      await runTrackingStep();
+      drawWidePreview();
+      await renderCenterView();
+      updateTopMetrics(lastTrackingResult);
+      updateStats();
+    }
+
+    function startRenderLoop() {
+      if (renderLoopActive) return;
+      renderLoopActive = true;
+
+      const tick = async () => {
+        if (!renderLoopActive) return;
+        await renderFrame();
+        requestAnimationFrame(tick);
+      };
+
+      requestAnimationFrame(tick);
+    }
+
+    function stopRenderLoop() {
+      renderLoopActive = false;
+    }
+
+    async function ensureOpenCv() {
+      if (openCvLoadState === 'ready') return true;
+      if (openCvLoadState === 'failed') return false;
+
+      openCvLoadState = 'loading';
+      updateStats();
+
+      try {
+        await loadOpenCv();
+        openCvLoadState = 'ready';
+        captureReferenceBtn.disabled = false;
+        return true;
+      } catch (err) {
+        openCvLoadState = 'failed';
+        console.error('OpenCV load failed:', err);
+        if (appSettings.testOpenCvIntegration) {
+          showError('OpenCV could not be loaded. Check your network connection and reload the page.');
+        }
+        return false;
+      } finally {
+        updateStats();
+      }
+    }
+
+    async function captureReferenceImage() {
+      if (!centerCanvas.width || !centerCanvas.height) {
+        return;
+      }
+
+      const ctx = centerCanvas.getContext('2d');
+      referenceImageData = cloneImageData(
+        ctx.getImageData(0, 0, centerCanvas.width, centerCanvas.height)
+      );
+
+      try {
+        await ensureOpenCv();
+        await buildReferenceFeatures();
+        renderReferenceView();
+        lastTrackingResult = null;
+        updateReferenceButton();
+      } catch (err) {
+        resetTracking();
+        showError(err.message || 'Could not extract features from the reference image.');
+      }
+    }
+
+    function applyStoredSettings() {
+      const previousDetector = appSettings.featureDetector;
+      appSettings = loadTrackingSettings();
+      applyCropMaxCss();
+
+      if (referenceImageData && previousDetector !== appSettings.featureDetector) {
+        buildReferenceFeatures()
+          .then(() => {
+            renderReferenceView();
+            lastTrackingResult = null;
+          })
+          .catch((err) => {
+            console.error('Feature re-detection failed:', err);
+          });
+      }
+    }
+
+    async function init() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        showError('Camera access is not supported in this browser.');
+        return;
+      }
+
+      applyCropMaxCss();
+      clearError();
+
+      try {
+        await openCamera();
+        await new Promise((resolve) => {
+          if (video.videoWidth) return resolve();
+          video.addEventListener('loadedmetadata', resolve, { once: true });
+        });
+
+        captureReferenceBtn.disabled = false;
+        startRenderLoop();
+        ensureOpenCv();
+      } catch (err) {
+        showError(
+          'Could not open the environment camera. Use HTTPS or localhost and grant camera permission. ' +
+          (err.message || err.name || '')
+        );
+      }
+    }
+
+    menuBtn.addEventListener('click', () => {
+      window.location.href = 'settings.html';
+    });
+
+    captureReferenceBtn.addEventListener('click', async () => {
+      if (referenceImageData && referenceFeatures) {
+        resetTracking();
+        await renderFrame();
+        return;
+      }
+      captureReferenceImage();
+    });
+
+    window.addEventListener('pageshow', async () => {
+      applyStoredSettings();
+      updateReferenceButton();
+      if (activeStream) {
+        await renderFrame();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (video.videoWidth) {
+        drawWidePreview();
+      }
+    });
+
+    window.addEventListener('beforeunload', () => {
+      stopRenderLoop();
+      stopActiveStream();
+      resetTracking();
+    });
+
+    init();
+  </script>
+</body>
+</html>

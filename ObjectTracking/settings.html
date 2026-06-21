@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="icon" href="data:,">
+  <title>Settings · Object Tracking</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --text: #f0f0f0;
+      --muted: #888;
+      --accent: #3b82f6;
+      --accent-pressed: #2563eb;
+      --border: #333;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      padding-top: var(--safe-top);
+      padding-bottom: calc(1rem + var(--safe-bottom));
+    }
+
+    .top-bar {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 2.5rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #1e1e1e;
+    }
+
+    .back-btn, .confirm-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      cursor: pointer;
+      border-radius: 8px;
+      touch-action: manipulation;
+    }
+
+    .back-btn {
+      width: 2.5rem;
+      height: 2.5rem;
+      background: none;
+      color: var(--text);
+    }
+
+    .back-btn:active { background: var(--surface); }
+
+    .confirm-btn {
+      grid-column: 2;
+      justify-self: center;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+    }
+
+    .confirm-btn:active { background: var(--accent-pressed); }
+
+    main {
+      flex: 1;
+      padding: 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .setting-group {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .setting-group h2 {
+      padding: 0.85rem 1rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .option, .toggle-option {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border-top: 1px solid #222;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .option:first-of-type,
+    .toggle-option:first-of-type {
+      border-top: none;
+    }
+
+    .toggle-option {
+      justify-content: space-between;
+    }
+
+    .option input {
+      width: 1.15rem;
+      height: 1.15rem;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .option span,
+    .toggle-option > span:first-child {
+      font-size: 1rem;
+    }
+
+    .toggle-input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 2.75rem;
+      height: 1.55rem;
+      background: #333;
+      border-radius: 999px;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 0.12rem;
+      left: 0.15rem;
+      width: 1.3rem;
+      height: 1.3rem;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+
+    .toggle-input:checked + .toggle-switch {
+      background: var(--accent);
+    }
+
+    .toggle-input:checked + .toggle-switch::after {
+      transform: translateX(1.15rem);
+    }
+
+    .hint {
+      padding: 0 1rem 0.85rem;
+      font-size: 0.85rem;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <button class="back-btn" id="backBtn" type="button" aria-label="Back">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+    </button>
+    <button class="confirm-btn" id="confirmBtn" type="button">Confirm</button>
+  </div>
+
+  <main>
+    <div class="setting-group">
+      <h2>OpenCV</h2>
+      <label class="toggle-option" for="testOpenCvToggle">
+        <span>Test OpenCV integration</span>
+        <input type="checkbox" class="toggle-input" id="testOpenCvToggle">
+        <span class="toggle-switch" aria-hidden="true"></span>
+      </label>
+      <p class="hint">When enabled, the center view shows a blurred crop from the live camera to verify OpenCV is working.</p>
+    </div>
+
+    <div class="setting-group">
+      <h2>Crop size</h2>
+      <label class="option">
+        <input type="radio" name="cropSize" value="300">
+        <span>300 × 300</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="cropSize" value="500">
+        <span>500 × 500</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="cropSize" value="800">
+        <span>800 × 800</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="cropSize" value="1000">
+        <span>1000 × 1000</span>
+      </label>
+    </div>
+
+    <div class="setting-group">
+      <h2>Feature detector</h2>
+      <label class="option">
+        <input type="radio" name="featureDetector" value="orb">
+        <span>ORB</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="featureDetector" value="akaze">
+        <span>AKAZE</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="featureDetector" value="brisk">
+        <span>BRISK</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="featureDetector" value="fast">
+        <span>FAST</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="featureDetector" value="kaze">
+        <span>KAZE</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="featureDetector" value="sift">
+        <span>SIFT (if supported)</span>
+      </label>
+      <p class="hint">Used after capturing a reference image. The top 100 features are drawn on the center view.</p>
+    </div>
+  </main>
+
+  <script src="settings.js"></script>
+  <script>
+    let settings = loadTrackingSettings();
+    const testOpenCvToggle = document.getElementById('testOpenCvToggle');
+
+    function applySettingsToForm(nextSettings) {
+      testOpenCvToggle.checked = Boolean(nextSettings.testOpenCvIntegration);
+
+      document.querySelectorAll('input[name="cropSize"]').forEach((input) => {
+        input.checked = Number(input.value) === nextSettings.cropSize;
+      });
+
+      document.querySelectorAll('input[name="featureDetector"]').forEach((input) => {
+        input.checked = input.value === nextSettings.featureDetector;
+      });
+    }
+
+    function saveSettingsFromForm() {
+      const cropChoice = document.querySelector('input[name="cropSize"]:checked');
+      const detectorChoice = document.querySelector('input[name="featureDetector"]:checked');
+
+      saveTrackingSettings({
+        testOpenCvIntegration: testOpenCvToggle.checked,
+        cropSize: cropChoice ? normalizeCropSize(Number(cropChoice.value)) : DEFAULT_CROP_SIZE,
+        featureDetector: detectorChoice
+          ? normalizeFeatureDetector(detectorChoice.value)
+          : DEFAULT_FEATURE_DETECTOR
+      });
+    }
+
+    applySettingsToForm(settings);
+
+    function goBack() {
+      window.location.href = 'object_tracking.html';
+    }
+
+    document.getElementById('backBtn').addEventListener('click', () => {
+      saveSettingsFromForm();
+      goBack();
+    });
+
+    document.getElementById('confirmBtn').addEventListener('click', () => {
+      saveSettingsFromForm();
+      goBack();
+    });
+  </script>
+</body>
+</html>
