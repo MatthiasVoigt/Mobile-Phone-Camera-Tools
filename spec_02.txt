@@ -51,6 +51,30 @@ Unsupported properties
 - For unsupported properties, display "Not supported" instead of a value or range.
 - This gives users a consistent checklist and makes it easy to compare cameras.
 
+Export capabilities
+-------------------
+- Provide a way to export the full capabilities report for the currently selected
+  camera so it can be reused in other applications, documents, or scripts.
+- Support at least these export formats:
+  - Plain text (human-readable table layout)
+  - Markdown (table plus headings, suitable for README files and documentation)
+- Each export must include, for every listed property:
+  - Property name
+  - Adjustable / Read-only / Not supported status
+  - Allowed values or range
+  - Current value
+- Also include export metadata:
+  - Selected camera name or selection type (environment, front, or device label)
+  - Device ID and group ID when available
+  - Export date and time
+  - Browser user agent (optional but helpful for debugging)
+- Offer export actions in the UI, for example:
+  - Copy to clipboard
+  - Download as a `.txt` or `.md` file
+- The exported content must contain the same data shown on screen, formatted
+  consistently so it can be pasted into spreadsheets, notes, bug reports, or
+  downstream tooling without manual reformatting.
+
 User experience notes
 ---------------------
 - Keep the UI simple: camera picker at the top, scrollable capabilities list below.

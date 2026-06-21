@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="icon" href="data:,">
+  <title>Camera Capabilities</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --text: #f0f0f0;
+      --muted: #888;
+      --accent: #3b82f6;
+      --accent-pressed: #2563eb;
+      --border: #333;
+      --success: #4ade80;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      padding-top: var(--safe-top);
+      padding-bottom: calc(1rem + var(--safe-bottom));
+    }
+
+    .top-bar {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 2.5rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #1e1e1e;
+      flex-shrink: 0;
+    }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      background: none;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+      border-radius: 8px;
+      touch-action: manipulation;
+    }
+
+    .back-btn:active { background: var(--surface); }
+
+    .top-bar h1 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      text-align: center;
+      padding-right: 2.5rem;
+    }
+
+    main {
+      flex: 1;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      overflow: auto;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .panel h2 {
+      padding: 0.85rem 1rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .option {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border-top: 1px solid #222;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .option:first-of-type { border-top: none; }
+
+    .option input {
+      width: 1.15rem;
+      height: 1.15rem;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .option span {
+      font-size: 1rem;
+      line-height: 1.35;
+    }
+
+    .status {
+      padding: 0.85rem 1rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      border-top: 1px solid #222;
+    }
+
+    .error {
+      padding: 1rem;
+      background: #2a1010;
+      border: 1px solid #5c2020;
+      border-radius: 12px;
+      color: #f88;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .error.hidden,
+    .hidden {
+      display: none !important;
+    }
+
+    .capability-list {
+      list-style: none;
+    }
+
+    .capability-item {
+      padding: 0.9rem 1rem;
+      border-top: 1px solid #222;
+    }
+
+    .capability-item:first-child {
+      border-top: none;
+    }
+
+    .capability-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .capability-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .capability-badge {
+      flex-shrink: 0;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .capability-badge.adjustable {
+      color: #bbf7d0;
+      background: rgba(74, 222, 128, 0.15);
+    }
+
+    .capability-badge.readonly {
+      color: #fde68a;
+      background: rgba(251, 191, 36, 0.15);
+    }
+
+    .capability-badge.unsupported {
+      color: #fca5a5;
+      background: rgba(248, 113, 113, 0.15);
+    }
+
+    .capability-detail {
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+
+    .capability-detail dt {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .capability-detail dd {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      word-break: break-word;
+    }
+
+    .export-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      padding: 0.85rem 1rem 1rem;
+      border-top: 1px solid #222;
+    }
+
+    .export-btn {
+      padding: 0.75rem 0.65rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .export-btn:active:not(:disabled) {
+      background: #1f1f1f;
+    }
+
+    .export-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .export-feedback {
+      grid-column: 1 / -1;
+      font-size: 0.85rem;
+      color: var(--success);
+      text-align: center;
+      min-height: 1.2rem;
+    }
+
+    .export-feedback.error {
+      color: var(--danger);
+    }
+
+    #video {
+      position: fixed;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <button class="back-btn" id="backBtn" type="button" aria-label="Back to tools">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+    </button>
+    <h1>Camera Capabilities</h1>
+  </div>
+
+  <main>
+    <p class="error hidden" id="errorEl"></p>
+
+    <section class="panel" aria-label="Camera selection">
+      <h2>Select camera</h2>
+      <div id="cameraOptions">
+        <p class="status" id="cameraLoading">Requesting camera access…</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Camera capabilities">
+      <h2>Capabilities</h2>
+      <p class="status hidden" id="capabilitiesStatus">Select a camera to view capabilities.</p>
+      <ul class="capability-list" id="capabilityList"></ul>
+      <div class="export-actions" id="exportActions">
+        <button class="export-btn" id="copyTextBtn" type="button" disabled>Copy text</button>
+        <button class="export-btn" id="copyMarkdownBtn" type="button" disabled>Copy Markdown</button>
+        <button class="export-btn" id="downloadTextBtn" type="button" disabled>Download .txt</button>
+        <button class="export-btn" id="downloadMarkdownBtn" type="button" disabled>Download .md</button>
+        <p class="export-feedback" id="exportFeedback" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+
+  <video id="video" playsinline autoplay muted></video>
+
+  <script src="camera-capabilities.js"></script>
+  <script>
+    const backBtn = document.getElementById('backBtn');
+    const errorEl = document.getElementById('errorEl');
+    const cameraOptions = document.getElementById('cameraOptions');
+    const cameraLoading = document.getElementById('cameraLoading');
+    const capabilitiesStatus = document.getElementById('capabilitiesStatus');
+    const capabilityList = document.getElementById('capabilityList');
+    const copyTextBtn = document.getElementById('copyTextBtn');
+    const copyMarkdownBtn = document.getElementById('copyMarkdownBtn');
+    const downloadTextBtn = document.getElementById('downloadTextBtn');
+    const downloadMarkdownBtn = document.getElementById('downloadMarkdownBtn');
+    const exportFeedback = document.getElementById('exportFeedback');
+    const video = document.getElementById('video');
+
+    let activeStream = null;
+    let selectedCamera = DEFAULT_CAMERA_SELECTION;
+    let cameraSwitchInProgress = false;
+    let currentCapabilityRows = [];
+    let currentExportMetadata = null;
+    let exportFeedbackTimeout = null;
+
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+    }
+
+    function clearError() {
+      errorEl.textContent = '';
+      errorEl.classList.add('hidden');
+    }
+
+    function stopActiveStream() {
+      activeStream?.getTracks?.().forEach((track) => track.stop());
+      activeStream = null;
+      video.srcObject = null;
+    }
+
+    function createCameraOption(value, label, checked) {
+      const option = document.createElement('label');
+      option.className = 'option';
+
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'cameraSelection';
+      input.value = value;
+      input.checked = checked;
+
+      const text = document.createElement('span');
+      text.textContent = label;
+
+      option.appendChild(input);
+      option.appendChild(text);
+      return option;
+    }
+
+    function renderCameraOptions(devices) {
+      cameraOptions.textContent = '';
+
+      CAMERA_FACING_OPTIONS.forEach((facing) => {
+        cameraOptions.appendChild(createCameraOption(
+          facing,
+          CAMERA_FACING_LABELS[facing],
+          selectedCamera === facing
+        ));
+      });
+
+      devices.forEach((device, index) => {
+        const value = buildCameraDeviceSelectionId(device.deviceId);
+        cameraOptions.appendChild(createCameraOption(
+          value,
+          formatCameraDeviceLabel(device, index),
+          selectedCamera === value
+        ));
+      });
+
+      if (devices.length === 0) {
+        const status = document.createElement('p');
+        status.className = 'status';
+        status.textContent = 'No individual camera devices were reported.';
+        cameraOptions.appendChild(status);
+      }
+
+      document.querySelectorAll('input[name="cameraSelection"]').forEach((input) => {
+        input.addEventListener('change', () => {
+          if (input.checked) {
+            selectCamera(input.value);
+          }
+        });
+      });
+    }
+
+    function badgeClass(changeType) {
+      if (changeType === 'Adjustable') return 'adjustable';
+      if (changeType === 'Read-only') return 'readonly';
+      return 'unsupported';
+    }
+
+    function setExportButtonsEnabled(enabled) {
+      copyTextBtn.disabled = !enabled;
+      copyMarkdownBtn.disabled = !enabled;
+      downloadTextBtn.disabled = !enabled;
+      downloadMarkdownBtn.disabled = !enabled;
+    }
+
+    function showExportFeedback(message, isError = false) {
+      if (exportFeedbackTimeout) {
+        clearTimeout(exportFeedbackTimeout);
+        exportFeedbackTimeout = null;
+      }
+
+      exportFeedback.textContent = message;
+      exportFeedback.classList.toggle('error', isError);
+
+      if (message) {
+        exportFeedbackTimeout = setTimeout(() => {
+          exportFeedback.textContent = '';
+          exportFeedback.classList.remove('error');
+          exportFeedbackTimeout = null;
+        }, 3000);
+      }
+    }
+
+    function getSelectedCameraLabel() {
+      const selectedInput = document.querySelector('input[name="cameraSelection"]:checked');
+      const optionLabel = selectedInput?.nextElementSibling?.textContent?.trim();
+      return optionLabel || getCameraSelectionLabel(selectedCamera);
+    }
+
+    function updateExportState(track, rows) {
+      const settings = track.getSettings?.() ?? {};
+      currentCapabilityRows = rows;
+      currentExportMetadata = buildExportMetadata({
+        cameraLabel: getSelectedCameraLabel(),
+        deviceId: settings.deviceId,
+        groupId: settings.groupId,
+        userAgent: navigator.userAgent
+      });
+      setExportButtonsEnabled(rows.length > 0);
+      showExportFeedback('');
+    }
+
+    function getExportFilename(extension) {
+      const slug = sanitizeExportFilename(currentExportMetadata?.cameraLabel);
+      const date = new Date().toISOString().slice(0, 10);
+      return `camera-capabilities-${slug}-${date}.${extension}`;
+    }
+
+    function renderCapabilities(rows) {
+      capabilityList.textContent = '';
+      capabilitiesStatus.classList.add('hidden');
+      currentCapabilityRows = [];
+      currentExportMetadata = null;
+      setExportButtonsEnabled(false);
+
+      if (rows.length === 0) {
+        capabilitiesStatus.textContent = 'No capability data available for this camera.';
+        capabilitiesStatus.classList.remove('hidden');
+        return;
+      }
+
+      for (const row of rows) {
+        const item = document.createElement('li');
+        item.className = 'capability-item';
+
+        const header = document.createElement('div');
+        header.className = 'capability-header';
+
+        const name = document.createElement('div');
+        name.className = 'capability-name';
+        name.textContent = row.label;
+
+        const badge = document.createElement('span');
+        badge.className = `capability-badge ${badgeClass(row.changeType)}`;
+        badge.textContent = row.changeType;
+
+        header.appendChild(name);
+        header.appendChild(badge);
+
+        const details = document.createElement('dl');
+        details.className = 'capability-detail';
+
+        const allowed = document.createElement('dt');
+        allowed.textContent = 'Allowed values';
+        const allowedValue = document.createElement('dd');
+        allowedValue.textContent = row.allowedValues;
+
+        const current = document.createElement('dt');
+        current.textContent = 'Current value';
+        const currentValue = document.createElement('dd');
+        currentValue.textContent = row.currentValue;
+
+        details.appendChild(allowed);
+        details.appendChild(allowedValue);
+        details.appendChild(current);
+        details.appendChild(currentValue);
+
+        item.appendChild(header);
+        item.appendChild(details);
+        capabilityList.appendChild(item);
+      }
+    }
+
+    async function openCameraStream(selection) {
+      stopActiveStream();
+
+      const constraints = buildVideoConstraintsForCamera(selection);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: constraints,
+        audio: false
+      });
+
+      activeStream = stream;
+      video.srcObject = stream;
+      await video.play();
+
+      const track = stream.getVideoTracks()[0];
+      if (!track) {
+        throw new Error('No video track available for the selected camera.');
+      }
+
+      return track;
+    }
+
+    async function refreshCapabilities(track) {
+      const capabilities = track.getCapabilities?.() ?? {};
+      const settings = track.getSettings?.() ?? {};
+      const rows = buildCapabilityRows(capabilities, settings);
+      renderCapabilities(rows);
+      updateExportState(track, rows);
+    }
+
+    async function exportCapabilities(format) {
+      if (!currentExportMetadata || currentCapabilityRows.length === 0) {
+        showExportFeedback('No capability data to export.', true);
+        return;
+      }
+
+      const text = format === 'markdown'
+        ? formatCapabilitiesAsMarkdown(currentExportMetadata, currentCapabilityRows)
+        : formatCapabilitiesAsText(currentExportMetadata, currentCapabilityRows);
+
+      try {
+        if (format === 'copy-text') {
+          await copyTextToClipboard(formatCapabilitiesAsText(currentExportMetadata, currentCapabilityRows));
+          showExportFeedback('Copied text to clipboard.');
+        } else if (format === 'copy-markdown') {
+          await copyTextToClipboard(formatCapabilitiesAsMarkdown(currentExportMetadata, currentCapabilityRows));
+          showExportFeedback('Copied Markdown to clipboard.');
+        } else if (format === 'download-text') {
+          downloadTextFile(getExportFilename('txt'), text);
+          showExportFeedback('Downloaded text file.');
+        } else if (format === 'download-markdown') {
+          downloadTextFile(getExportFilename('md'), text, 'text/markdown;charset=utf-8');
+          showExportFeedback('Downloaded Markdown file.');
+        }
+      } catch (err) {
+        showExportFeedback(
+          `Export failed: ${err.message || err.name || 'Unknown error'}`,
+          true
+        );
+      }
+    }
+
+    async function selectCamera(selection) {
+      if (cameraSwitchInProgress) {
+        return;
+      }
+
+      const normalized = normalizeCameraSelection(selection);
+      if (normalized === selectedCamera && activeStream) {
+        return;
+      }
+
+      cameraSwitchInProgress = true;
+      clearError();
+      capabilitiesStatus.textContent = 'Opening camera…';
+      capabilitiesStatus.classList.remove('hidden');
+      capabilityList.textContent = '';
+      currentCapabilityRows = [];
+      currentExportMetadata = null;
+      setExportButtonsEnabled(false);
+      showExportFeedback('');
+
+      try {
+        const track = await openCameraStream(normalized);
+        selectedCamera = normalized;
+        document.querySelectorAll('input[name="cameraSelection"]').forEach((input) => {
+          input.checked = input.value === selectedCamera;
+        });
+        await refreshCapabilities(track);
+      } catch (err) {
+        showError(
+          'Could not open the selected camera. ' +
+          (err.message || err.name || 'Unknown error')
+        );
+        capabilitiesStatus.textContent = 'Camera unavailable.';
+        capabilitiesStatus.classList.remove('hidden');
+      } finally {
+        cameraSwitchInProgress = false;
+      }
+    }
+
+    async function init() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        showError('Camera access is not supported in this browser.');
+        cameraLoading.textContent = 'Camera access is not supported.';
+        return;
+      }
+
+      try {
+        const track = await openCameraStream(DEFAULT_CAMERA_SELECTION);
+        selectedCamera = DEFAULT_CAMERA_SELECTION;
+
+        const devices = await listVideoInputDevices();
+        renderCameraOptions(devices);
+        await refreshCapabilities(track);
+      } catch (err) {
+        showError(
+          'Could not access the camera. Use HTTPS or localhost and grant camera permission. ' +
+          (err.message || err.name || '')
+        );
+        cameraLoading.textContent = 'Camera permission required.';
+      }
+    }
+
+    copyTextBtn.addEventListener('click', () => exportCapabilities('copy-text'));
+    copyMarkdownBtn.addEventListener('click', () => exportCapabilities('copy-markdown'));
+    downloadTextBtn.addEventListener('click', () => exportCapabilities('download-text'));
+    downloadMarkdownBtn.addEventListener('click', () => exportCapabilities('download-markdown'));
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = '../index.html';
+    });
+
+    window.addEventListener('beforeunload', () => {
+      stopActiveStream();
+    });
+
+    init();
+  </script>
+</body>
+</html>
