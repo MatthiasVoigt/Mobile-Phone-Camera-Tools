@@ -54,13 +54,8 @@ const DEFAULT_QUALITY_METRICS = {
   focusScore: true,
   showHistogram: true
 };
-const ZOOM_CAPABILITIES_KEY = 'experiment1-zoom-capabilities';
+const IMAGE_MAGNIFICATION_OPTIONS = [1, 2, 3, 4, 6, 8];
 const DEFAULT_IMAGE_MAGNIFICATION = 2;
-const ZOOM_STEP = 0.5;
-const DEFAULT_CAPTURE_SEQUENCE_LENGTH = 1;
-const MIN_CAPTURE_SEQUENCE_LENGTH = 1;
-const MAX_CAPTURE_SEQUENCE_LENGTH = 99;
-
 function getBarcodeFormatConfig(formatId) {
   return BARCODE_FORMATS.find((format) => format.id === formatId) ||
     BARCODE_FORMATS.find((format) => format.id === DEFAULT_BARCODE_FORMAT);
@@ -105,88 +100,24 @@ function normalizeQualityMetrics(value) {
   };
 }
 
-function saveZoomCapabilities(min, max) {
-  const zoomMin = Number(min);
-  const zoomMax = Number(max);
-  if (!Number.isFinite(zoomMin) || !Number.isFinite(zoomMax) || zoomMax < zoomMin) {
-    return;
-  }
-
-  localStorage.setItem(ZOOM_CAPABILITIES_KEY, JSON.stringify({
-    min: zoomMin,
-    max: zoomMax
-  }));
-}
-
-function loadZoomCapabilities() {
-  try {
-    const raw = localStorage.getItem(ZOOM_CAPABILITIES_KEY);
-    if (!raw) {
-      return { min: 1, max: DEFAULT_IMAGE_MAGNIFICATION };
-    }
-
-    const parsed = JSON.parse(raw);
-    const min = Number(parsed.min);
-    const max = Number(parsed.max);
-    if (!Number.isFinite(min) || !Number.isFinite(max) || max < min) {
-      return { min: 1, max: DEFAULT_IMAGE_MAGNIFICATION };
-    }
-
-    return { min, max };
-  } catch {
-    return { min: 1, max: DEFAULT_IMAGE_MAGNIFICATION };
-  }
-}
-
-function getZoomOptions(min, max, step = ZOOM_STEP) {
-  const options = [];
-  let value = Math.ceil(min / step) * step;
-
-  while (value <= max + 0.001) {
-    options.push(Math.round(value * 10) / 10);
-    value += step;
-  }
-
-  if (options.length === 0) {
-    const fallback = Math.min(max, Math.max(min, DEFAULT_IMAGE_MAGNIFICATION));
-    options.push(Math.round(fallback * 10) / 10);
-  }
-
-  return options;
-}
-
-function normalizeImageMagnification(value, caps = loadZoomCapabilities()) {
-  const options = getZoomOptions(caps.min, caps.max);
+function normalizeImageMagnification(value) {
   const num = Number(value);
 
   if (!Number.isFinite(num)) {
-    return options.includes(DEFAULT_IMAGE_MAGNIFICATION)
-      ? DEFAULT_IMAGE_MAGNIFICATION
-      : options[0];
+    return DEFAULT_IMAGE_MAGNIFICATION;
   }
 
-  if (options.includes(num)) {
+  if (IMAGE_MAGNIFICATION_OPTIONS.includes(num)) {
     return num;
   }
 
-  return options.reduce((best, option) =>
-    Math.abs(option - num) < Math.abs(best - num) ? option : best, options[0]);
+  return IMAGE_MAGNIFICATION_OPTIONS.reduce((best, option) =>
+    Math.abs(option - num) < Math.abs(best - num) ? option : best,
+    DEFAULT_IMAGE_MAGNIFICATION);
 }
 
 function formatMagnificationLabel(value) {
-  return `${Number(value).toFixed(1)}×`;
-}
-
-function normalizeCaptureSequenceLength(value) {
-  const num = Number(value);
-  if (!Number.isFinite(num)) {
-    return DEFAULT_CAPTURE_SEQUENCE_LENGTH;
-  }
-
-  return Math.min(
-    MAX_CAPTURE_SEQUENCE_LENGTH,
-    Math.max(MIN_CAPTURE_SEQUENCE_LENGTH, Math.floor(num))
-  );
+  return `${Number(value)}×`;
 }
 
 function getRequestedResolution(imageResolution, maxWidth, maxHeight) {
@@ -210,7 +141,6 @@ function loadSettings() {
         imageCounter: DEFAULT_IMAGE_COUNTER,
         imageResolution: DEFAULT_IMAGE_RESOLUTION,
         imageMagnification: DEFAULT_IMAGE_MAGNIFICATION,
-        captureSequenceLength: DEFAULT_CAPTURE_SEQUENCE_LENGTH,
         cropSize: DEFAULT_CROP_SIZE,
         qualityMetrics: { ...DEFAULT_QUALITY_METRICS },
         imageProcessing: 'none',
@@ -241,7 +171,6 @@ function loadSettings() {
       : DEFAULT_IMAGE_RESOLUTION;
 
     const imageCounter = Number(parsed.imageCounter);
-    const zoomCaps = loadZoomCapabilities();
 
     return {
       imageLabel: typeof parsed.imageLabel === 'string' ? parsed.imageLabel : DEFAULT_IMAGE_LABEL,
@@ -249,8 +178,9 @@ function loadSettings() {
         ? Math.floor(imageCounter)
         : DEFAULT_IMAGE_COUNTER,
       imageResolution,
-      imageMagnification: normalizeImageMagnification(parsed.imageMagnification, zoomCaps),
-      captureSequenceLength: normalizeCaptureSequenceLength(parsed.captureSequenceLength),
+      imageMagnification: normalizeImageMagnification(
+        parsed.imageMagnification ?? DEFAULT_IMAGE_MAGNIFICATION
+      ),
       cropSize: CROP_SIZE_OPTIONS.includes(cropSize) ? cropSize : DEFAULT_CROP_SIZE,
       qualityMetrics: normalizeQualityMetrics(parsed.qualityMetrics),
       imageProcessing,
@@ -266,7 +196,6 @@ function loadSettings() {
       imageCounter: DEFAULT_IMAGE_COUNTER,
       imageResolution: DEFAULT_IMAGE_RESOLUTION,
       imageMagnification: DEFAULT_IMAGE_MAGNIFICATION,
-      captureSequenceLength: DEFAULT_CAPTURE_SEQUENCE_LENGTH,
       cropSize: DEFAULT_CROP_SIZE,
       qualityMetrics: { ...DEFAULT_QUALITY_METRICS },
       imageProcessing: 'none',
@@ -291,18 +220,29 @@ function sanitizeImageLabel(label) {
   return sanitized || 'experiment1';
 }
 
-function buildImageFilename(settings, sequenceIndex = null) {
+function labelEndsWithNumber(label) {
+  return /\d+$/.test(String(label ?? '').trim());
+}
+
+function incrementLabelTrailingNumber(label) {
+  const trimmed = String(label ?? '').trim();
+  const match = trimmed.match(/^(.*?)(\d+)$/);
+  if (!match) return trimmed;
+
+  const prefix = match[1];
+  const digits = match[2];
+  const next = Number(digits) + 1;
+  if (!Number.isFinite(next)) return trimmed;
+
+  return `${prefix}${String(next).padStart(digits.length, '0')}`;
+}
+
+function buildImageFilename(settings) {
   const base = sanitizeImageLabel(settings.imageLabel);
   const counter = Number.isFinite(Number(settings.imageCounter)) && Number(settings.imageCounter) >= 1
     ? Number(settings.imageCounter)
     : DEFAULT_IMAGE_COUNTER;
-  const sequenceLength = normalizeCaptureSequenceLength(settings.captureSequenceLength);
-
-  if (sequenceLength > 1 && Number.isFinite(sequenceIndex) && sequenceIndex >= 1) {
-    return `${base}-${counter}-SEQU${Math.floor(sequenceIndex)}.png`;
-  }
-
-  return `${base}-${counter}.png`;
+  return `${base}_seq_${counter}.png`;
 }
 
 function incrementImageCounter(settings) {

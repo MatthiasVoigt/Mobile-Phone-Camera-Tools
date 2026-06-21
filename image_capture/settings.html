@@ -276,25 +276,6 @@
     </div>
 
     <div class="setting-group">
-      <h2>Capture sequence</h2>
-      <div class="sub-setting" style="border-top: none;">
-        <label for="captureSequenceLength">
-          <span>Images per capture</span>
-        </label>
-        <input
-          type="number"
-          class="text-input"
-          id="captureSequenceLength"
-          min="1"
-          max="99"
-          step="1"
-          inputmode="numeric"
-          autocomplete="off"
-        >
-      </div>
-    </div>
-
-    <div class="setting-group">
       <h2>Request Camera Image Resolution</h2>
       <label class="option">
         <input type="radio" name="imageResolution" value="max">
@@ -332,7 +313,30 @@
 
     <div class="setting-group" id="magnificationSettings">
       <h2>Image Magnification</h2>
-      <div id="magnificationOptions"></div>
+      <label class="option">
+        <input type="radio" name="imageMagnification" value="1">
+        <span>1×</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageMagnification" value="2">
+        <span>2×</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageMagnification" value="3">
+        <span>3×</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageMagnification" value="4">
+        <span>4×</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageMagnification" value="6">
+        <span>6×</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageMagnification" value="8">
+        <span>8×</span>
+      </label>
     </div>
 
     <div class="setting-group">
@@ -469,9 +473,7 @@
   <script>
     const settings = loadSettings();
     const imageLabelInput = document.getElementById('imageLabel');
-    const captureSequenceLengthInput = document.getElementById('captureSequenceLength');
     imageLabelInput.value = settings.imageLabel || '';
-    captureSequenceLengthInput.value = settings.captureSequenceLength;
 
     const resolutionChoice = document.querySelector(
       `input[name="imageResolution"][value="${settings.imageResolution}"]`
@@ -481,31 +483,10 @@
     const selected = document.querySelector(`input[name="cropSize"][value="${settings.cropSize}"]`);
     if (selected) selected.checked = true;
 
-    const magnificationOptionsEl = document.getElementById('magnificationOptions');
-    const zoomCaps = loadZoomCapabilities();
-    const zoomOptions = getZoomOptions(zoomCaps.min, zoomCaps.max);
-    const currentMagnification = normalizeImageMagnification(settings.imageMagnification, zoomCaps);
-
-    zoomOptions.forEach((zoom) => {
-      const label = document.createElement('label');
-      label.className = 'option';
-      const value = zoom.toFixed(1);
-      label.innerHTML = `
-        <input type="radio" name="imageMagnification" value="${value}">
-        <span>${formatMagnificationLabel(zoom)}</span>
-      `;
-      magnificationOptionsEl.appendChild(label);
+    const savedMagnification = normalizeImageMagnification(settings.imageMagnification);
+    document.querySelectorAll('input[name="imageMagnification"]').forEach((input) => {
+      input.checked = Number(input.value) === savedMagnification;
     });
-
-    const magnificationChoice = document.querySelector(
-      `input[name="imageMagnification"][value="${currentMagnification.toFixed(1)}"]`
-    );
-    if (magnificationChoice) {
-      magnificationChoice.checked = true;
-    } else {
-      const firstMagnification = document.querySelector('input[name="imageMagnification"]');
-      if (firstMagnification) firstMagnification.checked = true;
-    }
 
     const focusScoreToggle = document.getElementById('focusScoreToggle');
     const showHistogramToggle = document.getElementById('showHistogramToggle');
@@ -560,14 +541,14 @@
       window.location.href = 'image_capture.html';
     }
 
-    function confirmSettings() {
+    function saveSettingsFromForm() {
       const resolution = document.querySelector('input[name="imageResolution"]:checked');
       const imageResolution = resolution ? resolution.value : DEFAULT_IMAGE_RESOLUTION;
       const choice = document.querySelector('input[name="cropSize"]:checked');
       const cropSize = choice ? Number(choice.value) : DEFAULT_CROP_SIZE;
       const magnification = document.querySelector('input[name="imageMagnification"]:checked');
       const imageMagnification = magnification
-        ? normalizeImageMagnification(Number(magnification.value), loadZoomCapabilities())
+        ? normalizeImageMagnification(Number(magnification.value))
         : DEFAULT_IMAGE_MAGNIFICATION;
       const processing = document.querySelector('input[name="imageProcessing"]:checked');
       const imageProcessing = processing ? processing.value : 'none';
@@ -577,7 +558,6 @@
       const format = document.querySelector('input[name="barcodeFormat"]:checked');
       const barcodeFormat = format ? format.value : DEFAULT_BARCODE_FORMAT;
       const imageLabel = imageLabelInput.value;
-      const captureSequenceLength = normalizeCaptureSequenceLength(captureSequenceLengthInput.value);
       const labelChanged = imageLabel !== (settings.imageLabel ?? '');
       const imageCounter = labelChanged ? DEFAULT_IMAGE_COUNTER : settings.imageCounter;
       const qualityMetrics = {
@@ -590,7 +570,6 @@
         imageCounter,
         imageResolution,
         imageMagnification,
-        captureSequenceLength,
         cropSize,
         qualityMetrics,
         imageProcessing,
@@ -598,10 +577,14 @@
         barcodeDecoder,
         barcodeFormat
       });
+    }
+
+    function confirmSettings() {
+      saveSettingsFromForm();
       goBack();
     }
 
-    document.getElementById('backBtn').addEventListener('click', goBack);
+    document.getElementById('backBtn').addEventListener('click', confirmSettings);
     document.getElementById('confirmBtn').addEventListener('click', confirmSettings);
     document.getElementById('topConfirmBtn').addEventListener('click', confirmSettings);
   </script>

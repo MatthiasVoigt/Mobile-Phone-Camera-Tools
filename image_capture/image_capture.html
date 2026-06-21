@@ -77,12 +77,22 @@
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
     }
 
+    .page-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.2rem;
+      min-width: 0;
+      max-width: min(16rem, calc(100vw - 9rem));
+      pointer-events: none;
+    }
+
     #pageTitle {
       pointer-events: auto;
       cursor: pointer;
       padding: 0.2rem 0.5rem;
       border-radius: 8px;
-      max-width: min(14rem, calc(100vw - 9rem));
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -90,6 +100,34 @@
 
     #pageTitle:active {
       background: rgba(0, 0, 0, 0.35);
+    }
+
+    .label-increment-btn {
+      pointer-events: auto;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.45rem;
+      height: 1.45rem;
+      padding: 0;
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .label-increment-btn:active {
+      background: rgba(0, 0, 0, 0.55);
+    }
+
+    .label-increment-btn.hidden {
+      display: none;
     }
 
     .page-title-input {
@@ -264,14 +302,41 @@
     }
 
     .zoom-overlay-bottom {
+      position: relative;
       display: flex;
       justify-content: center;
+      align-items: center;
+      min-height: calc(4rem + 2.5rem);
       padding: 1.5rem 0.85rem 1rem;
       background: linear-gradient(
         to top,
         rgba(0, 0, 0, 0.55) 0%,
         transparent 100%
       );
+    }
+
+    .saved-filename-field {
+      position: absolute;
+      right: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: auto;
+      min-width: 0;
+      width: min(12rem, 40vw);
+      max-width: calc(100% - 5.5rem);
+      padding: 0.4rem 0.55rem;
+      font-size: 0.75rem;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .saved-filename-field.hidden {
+      display: none;
     }
 
     .histogram-overlay {
@@ -461,7 +526,15 @@
                   <path d="M8 3v3H3M16 3v3h5M16 21v-3h5M8 21v-3H3"/>
                 </svg>
               </button>
-              <h1 id="pageTitle" title="Tap to edit image label">Image Capture</h1>
+              <div class="page-title-row">
+                <h1 id="pageTitle" title="Tap to edit image label">Image Capture</h1>
+                <button
+                  class="label-increment-btn hidden"
+                  id="labelIncrementBtn"
+                  type="button"
+                  aria-label="Increment label number"
+                >+</button>
+              </div>
             </div>
             <p class="stats" id="stats">Starting camera…</p>
           </div>
@@ -484,6 +557,14 @@
           </div>
           <div class="zoom-overlay-bottom">
             <button class="capture-btn" id="captureBtn" type="button" aria-label="Save PNG" disabled></button>
+            <input
+              type="text"
+              class="saved-filename-field hidden"
+              id="savedFilenameField"
+              readonly
+              aria-live="polite"
+              aria-label="Saved filename"
+            >
           </div>
         </div>
         <div class="histogram-overlay hidden" id="histogramOverlay">
@@ -529,6 +610,7 @@
     const errorEl = document.getElementById('error');
     const saveBtn = document.getElementById('saveBtn');
     const captureBtn = document.getElementById('captureBtn');
+    const savedFilenameField = document.getElementById('savedFilenameField');
     const chooseRefBtn = document.getElementById('chooseRefBtn');
     const referenceSection = document.getElementById('referenceSection');
     const referenceDisplayCanvas = document.getElementById('referenceDisplayCanvas');
@@ -539,6 +621,7 @@
     const fullscreenEnterIcon = fullscreenBtn.querySelector('.fullscreen-enter-icon');
     const fullscreenExitIcon = fullscreenBtn.querySelector('.fullscreen-exit-icon');
     const pageTitle = document.getElementById('pageTitle');
+    const labelIncrementBtn = document.getElementById('labelIncrementBtn');
     const maxResolutionLabel = document.getElementById('maxResolutionLabel');
     const zoomLabel = document.getElementById('zoomLabel');
     const focusScoreLabel = document.getElementById('focusScoreLabel');
@@ -557,16 +640,44 @@
     let wideAnimationId = null;
     let centerLoopActive = false;
     let centerInFlight = false;
-    let reportedZoom = DEFAULT_IMAGE_MAGNIFICATION;
     let appSettings = loadSettings();
 
     let lastProcessingKey = '';
+    let savedFilenameTimeout = null;
+
+    function showSavedFilename(filename) {
+      if (savedFilenameTimeout) {
+        clearTimeout(savedFilenameTimeout);
+        savedFilenameTimeout = null;
+      }
+
+      savedFilenameField.value = filename;
+      savedFilenameField.classList.remove('hidden');
+
+      savedFilenameTimeout = setTimeout(() => {
+        savedFilenameField.classList.add('hidden');
+        savedFilenameField.value = '';
+        savedFilenameTimeout = null;
+      }, 5000);
+    }
 
     function updatePageTitle() {
       const label = String(appSettings.imageLabel ?? '').trim();
       const title = label || 'Image Capture';
       pageTitle.textContent = title;
       document.title = title;
+      labelIncrementBtn.classList.toggle('hidden', !labelEndsWithNumber(label));
+    }
+
+    function incrementPageLabelNumber() {
+      const previousLabel = String(appSettings.imageLabel ?? '').trim();
+      const nextLabel = incrementLabelTrailingNumber(previousLabel);
+      if (nextLabel === previousLabel) return;
+
+      appSettings.imageLabel = nextLabel;
+      appSettings.imageCounter = DEFAULT_IMAGE_COUNTER;
+      saveSettings(appSettings);
+      updatePageTitle();
     }
 
     function commitPageTitleEdit(input, restorePrevious) {
@@ -604,6 +715,7 @@
       input.spellcheck = false;
       input.setAttribute('aria-label', 'Image label');
 
+      labelIncrementBtn.classList.add('hidden');
       pageTitle.replaceWith(input);
       input.focus();
       input.select();
@@ -774,13 +886,15 @@
 
     function applyStoredSettings() {
       const previousResolution = appSettings.imageResolution;
-      const previousMagnification = appSettings.imageMagnification;
+      const previousMagnification = Number(appSettings.imageMagnification);
       appSettings = loadSettings();
+      appSettings.imageMagnification = normalizeImageMagnification(appSettings.imageMagnification);
       updatePageTitle();
       applyCropSize(appSettings.cropSize);
       syncProcessingState();
       updatePlanarTrackingUI();
       updateQualityMetricsOverlay();
+      updateStats();
       return {
         resolutionChanged: previousResolution !== appSettings.imageResolution,
         magnificationChanged: previousMagnification !== appSettings.imageMagnification
@@ -835,15 +949,12 @@
       const track = temp.getVideoTracks()[0];
       const caps = track.getCapabilities?.() ?? {};
 
-      if (caps.zoom) {
-        saveZoomCapabilities(caps.zoom.min ?? 1, caps.zoom.max ?? 1);
-      }
-
       temp.getTracks().forEach((t) => t.stop());
 
       const maxWidth = caps.width?.max ?? null;
       const maxHeight = caps.height?.max ?? null;
       const requested = getRequestedResolution(appSettings.imageResolution, maxWidth, maxHeight);
+      const magnification = normalizeImageMagnification(appSettings.imageMagnification);
 
       let stream;
       try {
@@ -851,15 +962,28 @@
           video: {
             facingMode: { ideal: 'environment' },
             width: { ideal: requested.width },
-            height: { ideal: requested.height }
+            height: { ideal: requested.height },
+            zoom: magnification
           },
           audio: false
         });
       } catch {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-          audio: false
-        });
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { ideal: 'environment' },
+              width: { ideal: requested.width },
+              height: { ideal: requested.height },
+              advanced: [{ zoom: magnification }]
+            },
+            audio: false
+          });
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' },
+            audio: false
+          });
+        }
       }
 
       return { stream, maxWidth, maxHeight };
@@ -867,39 +991,43 @@
 
     async function applyZoom(track) {
       const capabilities = track.getCapabilities?.() ?? {};
-      const min = capabilities.zoom?.min ?? 1;
-      const max = capabilities.zoom?.max ?? 1;
-      saveZoomCapabilities(min, max);
-
-      if (!capabilities.zoom) {
-        reportedZoom = 1;
-        return false;
-      }
-
-      const requested = normalizeImageMagnification(appSettings.imageMagnification, { min, max });
+      const requested = normalizeImageMagnification(appSettings.imageMagnification);
       appSettings.imageMagnification = requested;
 
-      try {
-        await track.applyConstraints({ advanced: [{ zoom: requested }] });
-        const trackSettings = track.getSettings();
-        reportedZoom = trackSettings.zoom ?? requested;
-        return true;
-      } catch {
-        reportedZoom = requested;
+      if (!capabilities.zoom) {
         return false;
       }
+
+      const attempts = [
+        { zoom: requested },
+        { advanced: [{ zoom: requested }] }
+      ];
+
+      for (const constraints of attempts) {
+        try {
+          await track.applyConstraints(constraints);
+          return true;
+        } catch {
+          // Try the next constraint format supported by this browser.
+        }
+      }
+
+      return false;
     }
 
     function updateStats() {
+      const magnification = normalizeImageMagnification(appSettings.imageMagnification);
       const w = video.videoWidth;
       const h = video.videoHeight;
-      if (!w || !h) return;
 
-      const zoomLabel = reportedZoom.toFixed(1);
+      if (!w || !h) {
+        statsEl.innerHTML = `Magnification: <span>${magnification}×</span>`;
+        return;
+      }
 
       statsEl.innerHTML =
         `Resolution: <span>${w} × ${h}</span><br>` +
-        `Magnification: <span>${zoomLabel}×</span>`;
+        `Magnification: <span>${magnification}×</span>`;
     }
 
     function getWideCropRegion(vw, vh) {
@@ -1073,94 +1201,42 @@
       updateMetricsRegionOverlay(squareSize);
     }
 
-    let saveInProgress = false;
-
-    function waitForCaptureFrame(delayMs = 0) {
-      return new Promise((resolve) => {
-        requestAnimationFrame(() => {
-          setTimeout(resolve, delayMs);
-        });
-      });
-    }
-
-    async function captureCurrentFrameBlob() {
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      if (!vw || !vh) {
-        return null;
-      }
-
-      const centerCrop = getCenterCropRegion(vw, vh, appSettings.cropSize);
-      renderCenterView(video, centerCrop);
-
-      return new Promise((resolve) => {
-        zoomCanvas.toBlob(resolve, 'image/png');
-      });
-    }
-
-    async function saveImageBlob(blob, filename, useSavePicker) {
-      if (useSavePicker && 'showSaveFilePicker' in window) {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: filename,
-          types: [
-            {
-              description: 'PNG Image',
-              accept: { 'image/png': ['.png'] }
-            }
-          ]
-        });
-
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-        return;
-      }
-
-      const link = document.createElement('a');
-      link.download = filename;
-      link.href = URL.createObjectURL(blob);
-      link.click();
-      URL.revokeObjectURL(link.href);
-    }
-
     async function savePng() {
-      if (saveInProgress) return;
-
-      const sequenceLength = normalizeCaptureSequenceLength(appSettings.captureSequenceLength);
-      const isSequence = sequenceLength > 1;
-      const useSavePicker = !isSequence && 'showSaveFilePicker' in window;
-
-      saveInProgress = true;
-      saveBtn.disabled = true;
-      captureBtn.disabled = true;
+      const filename = buildImageFilename(appSettings);
 
       try {
-        for (let sequenceIndex = 1; sequenceIndex <= sequenceLength; sequenceIndex += 1) {
-          if (sequenceIndex > 1) {
-            await waitForCaptureFrame(100);
-          }
+        if ('showSaveFilePicker' in window) {
+          const blob = await new Promise((resolve) => {
+            zoomCanvas.toBlob(resolve, 'image/png');
+          });
+          if (!blob) return;
 
-          const blob = await captureCurrentFrameBlob();
-          if (!blob) {
-            throw new Error('Could not capture image from camera.');
-          }
+          const handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [
+              {
+                description: 'PNG Image',
+                accept: { 'image/png': ['.png'] }
+              }
+            ]
+          });
 
-          const filename = buildImageFilename(
-            appSettings,
-            isSequence ? sequenceIndex : null
-          );
-          await saveImageBlob(blob, filename, useSavePicker);
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        } else {
+          const link = document.createElement('a');
+          link.download = filename;
+          link.href = zoomCanvas.toDataURL('image/png');
+          link.click();
         }
 
+        showSavedFilename(filename);
         incrementImageCounter(appSettings);
       } catch (err) {
         if (err?.name !== 'AbortError') {
           console.error('Save PNG failed:', err);
         }
-      } finally {
-        saveInProgress = false;
-        saveBtn.disabled = false;
-        captureBtn.disabled = false;
       }
     }
 
@@ -1240,6 +1316,10 @@
     }
 
     pageTitle.addEventListener('click', startPageTitleEdit);
+    labelIncrementBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      incrementPageLabelNumber();
+    });
 
     backBtn.addEventListener('click', () => {
       window.location.href = '../index.html';
@@ -1255,10 +1335,10 @@
     updateFullscreenButton();
 
     window.addEventListener('pageshow', async (event) => {
-      const { resolutionChanged, magnificationChanged } = applyStoredSettings();
+      const { resolutionChanged } = applyStoredSettings();
       if (resolutionChanged || event.persisted) {
         await restartCamera();
-      } else if (magnificationChanged) {
+      } else {
         await applyZoomToActiveTrack();
       }
     });
