@@ -202,9 +202,18 @@
       );
     }
 
-    .zoom-overlay-top .zoom-label {
+    .zoom-overlay-top .zoom-label,
+    .quality-metric {
       color: rgba(255, 255, 255, 0.8);
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    .quality-metric {
+      display: block;
+      margin-top: 0.35rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
 
     .zoom-overlay-bottom {
@@ -401,6 +410,7 @@
         <div class="zoom-overlay">
           <div class="zoom-overlay-top">
             <span class="zoom-label" id="zoomLabel">Center crop · 1500 × 1500</span>
+            <span class="quality-metric hidden" id="focusScoreLabel">Focus score · 0.0</span>
           </div>
           <div class="zoom-overlay-bottom">
             <button class="capture-btn" id="captureBtn" type="button" aria-label="Save PNG" disabled></button>
@@ -430,6 +440,7 @@
   <canvas id="cropCanvas" hidden></canvas>
 
   <script src="settings.js"></script>
+  <script src="image-quality.js"></script>
   <script src="image-processing.js"></script>
   <script src="barcode-detection.js"></script>
   <script src="planar-tracking.js"></script>
@@ -457,6 +468,7 @@
     const pageTitle = document.getElementById('pageTitle');
     const maxResolutionLabel = document.getElementById('maxResolutionLabel');
     const zoomLabel = document.getElementById('zoomLabel');
+    const focusScoreLabel = document.getElementById('focusScoreLabel');
     const zoomView = document.querySelector('.zoom-view');
     const referenceView = document.querySelector('.reference-view');
 
@@ -541,6 +553,26 @@
       }
     }
 
+    function updateQualityMetricsOverlay() {
+      if (!appSettings.qualityMetrics?.focusScore) {
+        resetFocusScoreHistory();
+        focusScoreLabel.classList.add('hidden');
+      }
+    }
+
+    function updateFocusScore(squareSize) {
+      if (!appSettings.qualityMetrics?.focusScore) {
+        resetFocusScoreHistory();
+        focusScoreLabel.classList.add('hidden');
+        return;
+      }
+
+      const cropped = cropCtx.getImageData(0, 0, squareSize, squareSize);
+      recordFocusScore(computeFocusScore(cropped));
+      focusScoreLabel.textContent = formatFocusScore(getSmoothedFocusScore());
+      focusScoreLabel.classList.remove('hidden');
+    }
+
     function applyStoredSettings() {
       const previousResolution = appSettings.imageResolution;
       appSettings = loadSettings();
@@ -548,6 +580,7 @@
       applyCropSize(appSettings.cropSize);
       syncProcessingState();
       updatePlanarTrackingUI();
+      updateQualityMetricsOverlay();
       return previousResolution !== appSettings.imageResolution;
     }
 
@@ -777,6 +810,8 @@
         sqX, sqY, squareSize, squareSize,
         0, 0, squareSize, squareSize
       );
+
+      updateFocusScore(squareSize);
 
       zoomCtx.clearRect(0, 0, squareSize, squareSize);
 

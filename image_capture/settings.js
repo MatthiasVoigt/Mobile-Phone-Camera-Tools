@@ -50,6 +50,9 @@ const BARCODE_FORMATS = [
 ];
 const BARCODE_FORMAT_OPTIONS = BARCODE_FORMATS.map((format) => format.id);
 const DEFAULT_BARCODE_FORMAT = 'data_matrix';
+const DEFAULT_QUALITY_METRICS = {
+  focusScore: true
+};
 
 function getBarcodeFormatConfig(formatId) {
   return BARCODE_FORMATS.find((format) => format.id === formatId) ||
@@ -87,6 +90,13 @@ function getImageResolutionLabel(resolutionId) {
   return preset ? `${preset.width} × ${preset.height}` : 'Maximum';
 }
 
+function normalizeQualityMetrics(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  return {
+    focusScore: Boolean(source.focusScore)
+  };
+}
+
 function getRequestedResolution(imageResolution, maxWidth, maxHeight) {
   if (imageResolution === 'max' || !IMAGE_RESOLUTION_PRESETS[imageResolution]) {
     return {
@@ -108,6 +118,7 @@ function loadSettings() {
         imageCounter: DEFAULT_IMAGE_COUNTER,
         imageResolution: DEFAULT_IMAGE_RESOLUTION,
         cropSize: DEFAULT_CROP_SIZE,
+        qualityMetrics: { ...DEFAULT_QUALITY_METRICS },
         imageProcessing: 'none',
         movingAverageRatio: DEFAULT_MOVING_AVERAGE_RATIO,
         barcodeDecoder: DEFAULT_BARCODE_DECODER,
@@ -144,6 +155,7 @@ function loadSettings() {
         : DEFAULT_IMAGE_COUNTER,
       imageResolution,
       cropSize: CROP_SIZE_OPTIONS.includes(cropSize) ? cropSize : DEFAULT_CROP_SIZE,
+      qualityMetrics: normalizeQualityMetrics(parsed.qualityMetrics),
       imageProcessing,
       movingAverageRatio: Number.isFinite(movingAverageRatio)
         ? clampMovingAverageRatio(movingAverageRatio)
@@ -157,6 +169,7 @@ function loadSettings() {
       imageCounter: DEFAULT_IMAGE_COUNTER,
       imageResolution: DEFAULT_IMAGE_RESOLUTION,
       cropSize: DEFAULT_CROP_SIZE,
+      qualityMetrics: { ...DEFAULT_QUALITY_METRICS },
       imageProcessing: 'none',
       movingAverageRatio: DEFAULT_MOVING_AVERAGE_RATIO,
       barcodeDecoder: DEFAULT_BARCODE_DECODER,
