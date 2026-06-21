@@ -132,6 +132,20 @@
       accent-color: var(--accent);
     }
 
+    .text-input {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .text-input::placeholder {
+      color: var(--muted);
+    }
+
     .sub-setting.hidden {
       display: none;
     }
@@ -168,6 +182,21 @@
   </div>
 
   <main>
+    <div class="setting-group">
+      <h2>Image label</h2>
+      <div class="sub-setting" style="border-top: none;">
+        <input
+          type="text"
+          class="text-input"
+          id="imageLabel"
+          placeholder="e.g. experiment1"
+          maxlength="64"
+          autocomplete="off"
+          spellcheck="false"
+        >
+      </div>
+    </div>
+
     <div class="setting-group">
       <h2>Center crop size</h2>
       <label class="option">
@@ -307,6 +336,9 @@
   <script src="settings.js"></script>
   <script>
     const settings = loadSettings();
+    const imageLabelInput = document.getElementById('imageLabel');
+    imageLabelInput.value = settings.imageLabel || '';
+
     const selected = document.querySelector(`input[name="cropSize"][value="${settings.cropSize}"]`);
     if (selected) selected.checked = true;
 
@@ -370,8 +402,13 @@
       const barcodeDecoder = decoder ? decoder.value : DEFAULT_BARCODE_DECODER;
       const format = document.querySelector('input[name="barcodeFormat"]:checked');
       const barcodeFormat = format ? format.value : DEFAULT_BARCODE_FORMAT;
+      const imageLabel = imageLabelInput.value;
+      const labelChanged = imageLabel !== (settings.imageLabel ?? '');
+      const imageCounter = labelChanged ? DEFAULT_IMAGE_COUNTER : settings.imageCounter;
 
       saveSettings({
+        imageLabel,
+        imageCounter,
         cropSize,
         imageProcessing,
         movingAverageRatio,

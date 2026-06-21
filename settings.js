@@ -1,4 +1,6 @@
 const SETTINGS_KEY = 'experiment1-settings';
+const DEFAULT_IMAGE_LABEL = '';
+const DEFAULT_IMAGE_COUNTER = 1;
 const DEFAULT_CROP_SIZE = 1500;
 const CROP_SIZE_OPTIONS = [500, 800, 1000, 1500];
 const IMAGE_PROCESSING_OPTIONS = [
@@ -78,6 +80,8 @@ function loadSettings() {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) {
       return {
+        imageLabel: DEFAULT_IMAGE_LABEL,
+        imageCounter: DEFAULT_IMAGE_COUNTER,
         cropSize: DEFAULT_CROP_SIZE,
         imageProcessing: 'none',
         movingAverageRatio: DEFAULT_MOVING_AVERAGE_RATIO,
@@ -103,7 +107,13 @@ function loadSettings() {
       ? parsed.barcodeFormat
       : DEFAULT_BARCODE_FORMAT;
 
+    const imageCounter = Number(parsed.imageCounter);
+
     return {
+      imageLabel: typeof parsed.imageLabel === 'string' ? parsed.imageLabel : DEFAULT_IMAGE_LABEL,
+      imageCounter: Number.isFinite(imageCounter) && imageCounter >= 1
+        ? Math.floor(imageCounter)
+        : DEFAULT_IMAGE_COUNTER,
       cropSize: CROP_SIZE_OPTIONS.includes(cropSize) ? cropSize : DEFAULT_CROP_SIZE,
       imageProcessing,
       movingAverageRatio: Number.isFinite(movingAverageRatio)
@@ -114,6 +124,8 @@ function loadSettings() {
     };
   } catch {
     return {
+      imageLabel: DEFAULT_IMAGE_LABEL,
+      imageCounter: DEFAULT_IMAGE_COUNTER,
       cropSize: DEFAULT_CROP_SIZE,
       imageProcessing: 'none',
       movingAverageRatio: DEFAULT_MOVING_AVERAGE_RATIO,
@@ -125,4 +137,30 @@ function loadSettings() {
 
 function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function sanitizeImageLabel(label) {
+  const trimmed = String(label ?? '').trim();
+  if (!trimmed) return 'experiment1';
+  const sanitized = trimmed
+    .replace(/[^\w\-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  return sanitized || 'experiment1';
+}
+
+function buildImageFilename(settings) {
+  const base = sanitizeImageLabel(settings.imageLabel);
+  const counter = Number.isFinite(Number(settings.imageCounter)) && Number(settings.imageCounter) >= 1
+    ? Number(settings.imageCounter)
+    : DEFAULT_IMAGE_COUNTER;
+  return `${base}-${counter}.png`;
+}
+
+function incrementImageCounter(settings) {
+  const current = Number.isFinite(Number(settings.imageCounter)) && Number(settings.imageCounter) >= 1
+    ? Number(settings.imageCounter)
+    : DEFAULT_IMAGE_COUNTER;
+  settings.imageCounter = current + 1;
+  saveSettings(settings);
 }

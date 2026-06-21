@@ -13,7 +13,7 @@ function resetMovingAverage() {
 function updateAccumulator(imageData, alpha) {
   const { data, width, height } = imageData;
   const blend = clampMovingAverageRatio(alpha);
-  const retain = 1 - blend;
+  const retain = 1.0 - blend;
 
   if (
     !movingAverageState.data ||
@@ -87,7 +87,7 @@ function computeMovingAverage(imageData, alpha) {
 function computeChangeDetection(imageData, alpha) {
   const { data, width, height } = imageData;
   const blend = clampMovingAverageRatio(alpha);
-  const retain = 1 - blend;
+  const retain = 1.0 - blend;
   const output = new Uint8ClampedArray(data.length);
 
   if (
