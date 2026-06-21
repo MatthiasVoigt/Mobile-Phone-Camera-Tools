@@ -43,9 +43,9 @@
       position: relative;
     }
 
-    .menu-btn {
+    .overlay-btn {
       position: absolute;
-      left: 0;
+      top: 0;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -60,7 +60,11 @@
       pointer-events: auto;
     }
 
-    .menu-btn:active { background: rgba(0, 0, 0, 0.55); }
+    .overlay-btn:active { background: rgba(0, 0, 0, 0.55); }
+
+    .menu-btn { left: 0; }
+
+    .fullscreen-btn { right: 0; }
 
     h1 {
       font-size: 1.25rem;
@@ -365,11 +369,19 @@
         <div class="wide-overlay">
           <div class="wide-overlay-top">
             <div class="top-bar">
-              <button class="menu-btn" id="menuBtn" type="button" aria-label="Settings">
+              <button class="overlay-btn menu-btn" id="menuBtn" type="button" aria-label="Settings">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
                   <line x1="4" y1="7" x2="20" y2="7"/>
                   <line x1="4" y1="12" x2="20" y2="12"/>
                   <line x1="4" y1="17" x2="20" y2="17"/>
+                </svg>
+              </button>
+              <button class="overlay-btn fullscreen-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen">
+                <svg class="fullscreen-enter-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M8 3H3v5M16 3h5v5M16 21h5v-5M8 21H3v-5"/>
+                </svg>
+                <svg class="fullscreen-exit-icon hidden" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M8 3v3H3M16 3v3h5M16 21v-3h5M8 21v-3H3"/>
                 </svg>
               </button>
               <h1 id="pageTitle">Image Capture</h1>
@@ -439,6 +451,9 @@
     const referenceDisplayCanvas = document.getElementById('referenceDisplayCanvas');
     const referenceEmpty = document.getElementById('referenceEmpty');
     const menuBtn = document.getElementById('menuBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const fullscreenEnterIcon = fullscreenBtn.querySelector('.fullscreen-enter-icon');
+    const fullscreenExitIcon = fullscreenBtn.querySelector('.fullscreen-exit-icon');
     const pageTitle = document.getElementById('pageTitle');
     const maxResolutionLabel = document.getElementById('maxResolutionLabel');
     const zoomLabel = document.getElementById('zoomLabel');
@@ -847,9 +862,46 @@
     captureBtn.addEventListener('click', savePng);
     chooseRefBtn.addEventListener('click', captureReferenceImage);
 
+    function isFullscreen() {
+      return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
+    function updateFullscreenButton() {
+      const active = isFullscreen();
+      fullscreenEnterIcon.classList.toggle('hidden', active);
+      fullscreenExitIcon.classList.toggle('hidden', !active);
+      fullscreenBtn.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+    }
+
+    async function toggleFullscreen() {
+      try {
+        if (isFullscreen()) {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
+        } else {
+          const root = document.documentElement;
+          if (root.requestFullscreen) {
+            await root.requestFullscreen();
+          } else if (root.webkitRequestFullscreen) {
+            root.webkitRequestFullscreen();
+          }
+        }
+      } catch (err) {
+        console.error('Fullscreen request failed:', err);
+      }
+    }
+
     menuBtn.addEventListener('click', () => {
       window.location.href = 'settings.html';
     });
+
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
+    document.addEventListener('fullscreenchange', updateFullscreenButton);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+    updateFullscreenButton();
 
     window.addEventListener('pageshow', (event) => {
       const resolutionChanged = applyStoredSettings();
