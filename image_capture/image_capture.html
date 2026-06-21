@@ -62,7 +62,9 @@
 
     .overlay-btn:active { background: rgba(0, 0, 0, 0.55); }
 
-    .menu-btn { left: 0; }
+    .back-btn { left: 0; }
+
+    .menu-btn { left: 2.85rem; }
 
     .fullscreen-btn { right: 0; }
 
@@ -403,6 +405,11 @@
         <div class="wide-overlay">
           <div class="wide-overlay-top">
             <div class="top-bar">
+              <button class="overlay-btn back-btn" id="backBtn" type="button" aria-label="Back to tools">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M15 18l-6-6 6-6"/>
+                </svg>
+              </button>
               <button class="overlay-btn menu-btn" id="menuBtn" type="button" aria-label="Settings">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
                   <line x1="4" y1="7" x2="20" y2="7"/>
@@ -491,6 +498,7 @@
     const referenceSection = document.getElementById('referenceSection');
     const referenceDisplayCanvas = document.getElementById('referenceDisplayCanvas');
     const referenceEmpty = document.getElementById('referenceEmpty');
+    const backBtn = document.getElementById('backBtn');
     const menuBtn = document.getElementById('menuBtn');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const fullscreenEnterIcon = fullscreenBtn.querySelector('.fullscreen-enter-icon');
@@ -953,17 +961,40 @@
       updateMetricsRegionOverlay(squareSize);
     }
 
-    function savePng() {
-      zoomCanvas.toBlob((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = buildImageFilename(appSettings);
-        link.click();
-        URL.revokeObjectURL(url);
+    async function savePng() {
+      const filename = buildImageFilename(appSettings);
+
+      try {
+        if ('showSaveFilePicker' in window) {
+          const blob = await new Promise((resolve) => {
+            zoomCanvas.toBlob(resolve, 'image/png');
+          });
+          if (!blob) return;
+
+          const handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [
+              {
+                description: 'PNG Image',
+                accept: { 'image/png': ['.png'] }
+              }
+            ]
+          });
+
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        } else {
+          const link = document.createElement('a');
+          link.download = filename;
+          link.href = zoomCanvas.toDataURL('image/png');
+          link.click();
+        }
+
         incrementImageCounter(appSettings);
-      }, 'image/png');
+      } catch (err) {
+        console.error('Save PNG failed:', err);
+      }
     }
 
     async function init() {
@@ -1040,6 +1071,10 @@
         console.error('Fullscreen request failed:', err);
       }
     }
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = '../index.html';
+    });
 
     menuBtn.addEventListener('click', () => {
       window.location.href = 'settings.html';

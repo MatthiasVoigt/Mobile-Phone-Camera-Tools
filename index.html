@@ -72,14 +72,26 @@
       border-radius: 12px;
       color: var(--text);
       text-decoration: none;
-      font-size: 1rem;
-      font-weight: 500;
       touch-action: manipulation;
       transition: background 0.15s;
     }
 
     .tool-link:active {
       background: #1f1f1f;
+    }
+
+    .tool-title {
+      display: block;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    .tool-description {
+      display: block;
+      margin-top: 0.35rem;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      color: var(--muted);
     }
   </style>
 </head>
@@ -92,7 +104,10 @@
   <main>
     <ul class="tool-list">
       <li>
-        <a class="tool-link" href="image_capture/image_capture.html">Image Capture</a>
+        <a class="tool-link" href="image_capture/image_capture.html">
+          <span class="tool-title">Image Capture</span>
+          <span class="tool-description">Capture cropped images and save them with custom filenames at maximum camera resolution.</span>
+        </a>
       </li>
     </ul>
   </main>
