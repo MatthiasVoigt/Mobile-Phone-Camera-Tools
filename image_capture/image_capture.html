@@ -292,6 +292,9 @@
     }
 
     .zoom-overlay-top {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
       padding: 0.65rem 0.85rem 1.5rem;
       background: linear-gradient(
         to bottom,
@@ -309,7 +312,6 @@
 
     .quality-metric {
       display: block;
-      margin-top: 0.35rem;
       font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.06em;
@@ -528,8 +530,8 @@
         <canvas id="metricsRegionCanvas" class="metrics-region-overlay hidden"></canvas>
         <div class="zoom-overlay">
           <div class="zoom-overlay-top">
-            <span class="zoom-label" id="zoomLabel">Center crop · 800 × 800</span>
             <span class="quality-metric hidden" id="focusScoreLabel">Focus score · 0.0</span>
+            <span class="zoom-label" id="zoomLabel">Center crop · 800 × 800</span>
             <span class="quality-metric hidden" id="maxPixelCountLabel">Max Pixel Count · 0</span>
           </div>
           <div class="zoom-overlay-bottom">
