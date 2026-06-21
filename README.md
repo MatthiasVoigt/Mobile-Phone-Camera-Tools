@@ -1,5 +1,7 @@
 # Mobile Phone Camera Tools
 
+[Open the live site](https://matthiasvoigt.github.io/Mobile-Phone-Camera-Tools/)
+
 Choose a tool
 
 ## [Image Capture / Image Data Collection](https://matthiasvoigt.github.io/Mobile-Phone-Camera-Tools/image_capture/image_capture.html)
@@ -23,5 +25,5 @@ Explore what each camera on your device can do.
 Evaluate image tracking with live camera input and a reference image.
 
 - Live environment camera stream with center crop reference view.
-- Test OpenCV integration with a blur filter preview.
+- Test OpenCV real time object traking.
 - Capture a reference image and visualize extracted features.
