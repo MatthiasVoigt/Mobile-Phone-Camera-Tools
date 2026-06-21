@@ -1,0 +1,61 @@
+Specifications / Instructions
+
+Project name: Show Camera Capabilities
+
+Overview
+--------
+Add a new tool to the Mobile Phone Camera Tools project. Create a subfolder named
+`camera_capabilities` and build a single-page static web app inside it. The page
+helps users explore what each camera on their device can do — useful on phones and
+tablets that expose multiple front, rear, and specialty cameras.
+
+Camera selection
+----------------
+- On page load, request camera permission once so the browser can enumerate devices.
+- Show a list of all available cameras, including:
+  - Generic facing-mode options: Environment facing (rear) and Front facing (selfie)
+  - Every individual video-input device reported by the browser (with labels when
+    available, e.g. "Back Triple Camera", "Front Camera")
+- Default selection: Environment facing (rear camera).
+- When the user picks a different camera, open that camera stream and refresh the
+  capabilities list for the newly selected device.
+
+Capabilities display
+--------------------
+- Below the camera selector, show a readable list of all properties the selected
+  camera supports.
+- For each property, report:
+  - The property name
+  - Whether it can be changed at runtime or is read-only
+  - The allowed range, step, or set of valid values (as returned by the browser)
+  - The current value, when available
+- Query capabilities using the standard MediaTrack / MediaDevices APIs (e.g.
+  `track.getCapabilities()` and `track.getSettings()`).
+- When the user switches cameras, replace the list with the capabilities of the
+  new selection.
+
+Read-only vs. adjustable properties
+-----------------------------------
+- Include both:
+  - Fixed capabilities (reported for information only; the user cannot change them
+    in this tool)
+  - Adjustable constraints (properties the browser exposes as settable)
+- Present them in one unified list, but make it clear which items are read-only
+  and which could theoretically be changed.
+
+Unsupported properties
+----------------------
+- Also list common camera properties that many devices support (width, height,
+  frame rate, facing mode, zoom, torch, focus mode, white balance, exposure, etc.),
+  even when the selected camera does not support a given property.
+- For unsupported properties, display "Not supported" instead of a value or range.
+- This gives users a consistent checklist and makes it easy to compare cameras.
+
+User experience notes
+---------------------
+- Keep the UI simple: camera picker at the top, scrollable capabilities list below.
+- Handle permission denial and missing camera APIs with a clear error message.
+- Stop and release the previous camera stream before opening a new one to avoid
+  leaving multiple cameras active.
+- Match the visual style of the existing Image Capture tool where practical
+  (dark theme, mobile-friendly layout).
