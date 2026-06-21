@@ -150,8 +150,5 @@ function getProcessingLabel(settings) {
   if (settings.imageProcessing === 'barcodeDetection') {
     return 'Barcode detection';
   }
-  if (settings.imageProcessing === 'planarTracking') {
-    return 'Planar tracking';
-  }
   return '';
 }

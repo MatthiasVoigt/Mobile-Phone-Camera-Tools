@@ -234,7 +234,7 @@ function drawMetricsRegionOverlay(ctx, squareSize) {
 
   ctx.clearRect(0, 0, squareSize, squareSize);
   ctx.setLineDash([8, 6]);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(center, center, radius, 0, Math.PI * 2);

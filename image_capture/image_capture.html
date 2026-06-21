@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <link rel="icon" href="data:,">
-  <title>Image Capture</title>
+  <title>Item_01</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -72,10 +72,19 @@
       display: flex;
       flex: 1;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
       gap: 0.35rem;
       min-width: 0;
       pointer-events: none;
+    }
+
+    .page-title-group {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .label-prefix-text {
@@ -93,12 +102,12 @@
       cursor: pointer;
       padding: 0.2rem 0.35rem;
       border-radius: 8px;
-      flex: 1;
       min-width: 0;
+      max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      text-align: left;
+      text-align: center;
       font-size: 1.05rem;
     }
 
@@ -136,18 +145,18 @@
 
     .page-title-input {
       pointer-events: auto;
-      font-size: 1.25rem;
+      font-size: 1.05rem;
       font-weight: 600;
       letter-spacing: 0.02em;
-      text-align: left;
+      text-align: center;
       color: #fff;
       background: rgba(0, 0, 0, 0.45);
       border: 1px solid rgba(255, 255, 255, 0.35);
       border-radius: 8px;
-      padding: 0.2rem 0.5rem;
-      flex: 1;
+      padding: 0.2rem 0.35rem;
       min-width: 0;
       max-width: 100%;
+      width: min(10rem, 42vw);
       outline: none;
       text-shadow: none;
     }
@@ -247,7 +256,7 @@
 
     .zoom-view {
       width: 100%;
-      max-width: min(100vw - 1.5rem, var(--crop-max, 1500px));
+      max-width: min(100vw - 1.5rem, var(--crop-max, 800px));
       aspect-ratio: 1 / 1;
       background: var(--surface);
       border: 1px solid #222;
@@ -438,46 +447,6 @@
       display: none !important;
     }
 
-    .reference-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .reference-view {
-      width: 100%;
-      max-width: min(100vw - 2rem, var(--crop-max, 1500px));
-      aspect-ratio: 1 / 1;
-      background: var(--surface);
-      border: 1px solid #222;
-      border-radius: 4px;
-      overflow: hidden;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .reference-view canvas {
-      display: block;
-      width: 100%;
-      height: auto;
-      aspect-ratio: 1 / 1;
-    }
-
-    .reference-empty {
-      position: absolute;
-      font-size: 0.8rem;
-      color: var(--muted);
-      text-align: center;
-      padding: 0 1rem;
-    }
-
-    .reference-empty.hidden {
-      display: none;
-    }
-
     .error {
       margin: 1rem;
       padding: 1rem;
@@ -525,13 +494,15 @@
               </button>
               <div class="page-title-row">
                 <span class="label-prefix-text">Label:</span>
-                <h1 id="pageTitle" title="Tap to edit image label">Image Capture</h1>
-                <button
-                  class="label-increment-btn hidden"
-                  id="labelIncrementBtn"
-                  type="button"
-                  aria-label="Increment label number"
-                >+</button>
+                <div class="page-title-group">
+                  <h1 id="pageTitle" title="Tap to edit image label">Item_01</h1>
+                  <button
+                    class="label-increment-btn hidden"
+                    id="labelIncrementBtn"
+                    type="button"
+                    aria-label="Increment label number"
+                  >+</button>
+                </div>
               </div>
               <button class="overlay-btn fullscreen-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen">
                 <svg class="fullscreen-enter-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -553,11 +524,11 @@
 
     <section class="zoom-section" aria-label="Center zoom">
       <div class="zoom-view">
-        <canvas id="zoomCanvas" width="1500" height="1500"></canvas>
+        <canvas id="zoomCanvas" width="800" height="800"></canvas>
         <canvas id="metricsRegionCanvas" class="metrics-region-overlay hidden"></canvas>
         <div class="zoom-overlay">
           <div class="zoom-overlay-top">
-            <span class="zoom-label" id="zoomLabel">Center crop · 1500 × 1500</span>
+            <span class="zoom-label" id="zoomLabel">Center crop · 800 × 800</span>
             <span class="quality-metric hidden" id="focusScoreLabel">Focus score · 0.0</span>
             <span class="quality-metric hidden" id="maxPixelCountLabel">Max Pixel Count · 0</span>
           </div>
@@ -583,17 +554,7 @@
   <footer>
     <div class="footer-actions">
       <button class="action-btn save-btn" id="saveBtn" type="button" disabled>Save PNG</button>
-      <button class="action-btn secondary-btn hidden" id="chooseRefBtn" type="button" disabled>
-        Choose Reference Image
-      </button>
     </div>
-    <section class="reference-section hidden" id="referenceSection" aria-label="Reference image">
-      <span class="zoom-label">Reference image</span>
-      <div class="reference-view">
-        <canvas id="referenceDisplayCanvas"></canvas>
-        <p class="reference-empty" id="referenceEmpty">No reference selected</p>
-      </div>
-    </section>
   </footer>
 
   <video id="video" playsinline autoplay muted></video>
@@ -603,7 +564,6 @@
   <script src="image-quality.js"></script>
   <script src="image-processing.js"></script>
   <script src="barcode-detection.js"></script>
-  <script src="planar-tracking.js"></script>
   <script>
     const WIDE_ASPECT = 16 / 9;
 
@@ -617,10 +577,6 @@
     const saveBtn = document.getElementById('saveBtn');
     const captureBtn = document.getElementById('captureBtn');
     const savedFilenameField = document.getElementById('savedFilenameField');
-    const chooseRefBtn = document.getElementById('chooseRefBtn');
-    const referenceSection = document.getElementById('referenceSection');
-    const referenceDisplayCanvas = document.getElementById('referenceDisplayCanvas');
-    const referenceEmpty = document.getElementById('referenceEmpty');
     const backBtn = document.getElementById('backBtn');
     const menuBtn = document.getElementById('menuBtn');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
@@ -638,7 +594,6 @@
     const metricsRegionCanvas = document.getElementById('metricsRegionCanvas');
     const metricsRegionCtx = metricsRegionCanvas.getContext('2d');
     const zoomView = document.querySelector('.zoom-view');
-    const referenceView = document.querySelector('.reference-view');
 
     const cropCanvas = document.getElementById('cropCanvas');
     const cropCtx = cropCanvas.getContext('2d', { willReadFrequently: true });
@@ -650,6 +605,7 @@
 
     let lastProcessingKey = '';
     let savedFilenameTimeout = null;
+    let saveInProgress = false;
 
     function showSavedFilename(filename) {
       if (savedFilenameTimeout) {
@@ -669,7 +625,7 @@
 
     function updatePageTitle() {
       const label = String(appSettings.imageLabel ?? '').trim();
-      const title = label || 'Image Capture';
+      const title = label || DEFAULT_IMAGE_LABEL;
       pageTitle.textContent = title;
       document.title = title;
       labelIncrementBtn.classList.toggle('hidden', !labelEndsWithNumber(label));
@@ -715,7 +671,7 @@
       input.type = 'text';
       input.className = 'page-title-input';
       input.value = appSettings.imageLabel ?? '';
-      input.placeholder = 'Image Capture';
+      input.placeholder = DEFAULT_IMAGE_LABEL;
       input.maxLength = 64;
       input.autocomplete = 'off';
       input.spellcheck = false;
@@ -759,29 +715,7 @@
       if (key !== lastProcessingKey) {
         resetMovingAverage();
         resetBarcodeDetection();
-        resetPlanarReference();
         lastProcessingKey = key;
-      }
-    }
-
-    function updatePlanarTrackingUI() {
-      const active = appSettings.imageProcessing === 'planarTracking';
-      chooseRefBtn.classList.toggle('hidden', !active);
-      referenceSection.classList.toggle('hidden', !active);
-      referenceView.style.setProperty('--crop-max', `${appSettings.cropSize}px`);
-      updateReferenceView();
-    }
-
-    function updateReferenceView() {
-      const shown = drawPlanarReference(referenceDisplayCanvas);
-      referenceEmpty.classList.toggle('hidden', shown);
-      referenceDisplayCanvas.classList.toggle('hidden', !shown);
-    }
-
-    function captureReferenceImage() {
-      if (!cropCanvas.width || !cropCanvas.height) return;
-      if (capturePlanarReference(cropCanvas)) {
-        updateReferenceView();
       }
     }
 
@@ -789,7 +723,6 @@
       appSettings.cropSize = size;
       updateZoomLabel(size);
       zoomView.style.setProperty('--crop-max', `${size}px`);
-      referenceView.style.setProperty('--crop-max', `${size}px`);
     }
 
     function ensureCenterCanvases(squareSize) {
@@ -898,7 +831,6 @@
       updatePageTitle();
       applyCropSize(appSettings.cropSize);
       syncProcessingState();
-      updatePlanarTrackingUI();
       updateQualityMetricsOverlay();
       updateStats();
       return {
@@ -924,7 +856,6 @@
       video.srcObject?.getTracks?.().forEach((t) => t.stop());
       saveBtn.disabled = true;
       captureBtn.disabled = true;
-      chooseRefBtn.disabled = true;
       await init();
     }
 
@@ -1180,18 +1111,6 @@
         return;
       }
 
-      if (appSettings.imageProcessing === 'planarTracking') {
-        zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
-        const tracking = getPlanarTrackingResult();
-        drawPlanarTrackingOverlay(zoomCtx, tracking, squareSize);
-        if (hasPlanarReference()) {
-          drawPlanarTrackingStatus(zoomCtx, tracking, squareSize);
-        }
-        updateQualityMetrics(metricsSample);
-        updateMetricsRegionOverlay(squareSize);
-        return;
-      }
-
       syncProcessingState();
 
       if (appSettings.imageProcessing === 'none') {
@@ -1207,15 +1126,42 @@
       updateMetricsRegionOverlay(squareSize);
     }
 
+    function captureFrameForSave() {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh) {
+        return false;
+      }
+
+      const centerCrop = getCenterCropRegion(vw, vh, appSettings.cropSize);
+      renderCenterView(video, centerCrop);
+      return true;
+    }
+
     async function savePng() {
+      if (saveInProgress) {
+        return;
+      }
+
+      saveInProgress = true;
+      saveBtn.disabled = true;
+      captureBtn.disabled = true;
+
       const filename = buildImageFilename(appSettings);
+      const cameraReady = Boolean(video.srcObject && video.videoWidth);
 
       try {
+        if (!captureFrameForSave()) {
+          throw new Error('Could not capture image from camera.');
+        }
+
         if ('showSaveFilePicker' in window) {
           const blob = await new Promise((resolve) => {
             zoomCanvas.toBlob(resolve, 'image/png');
           });
-          if (!blob) return;
+          if (!blob) {
+            throw new Error('Could not encode image.');
+          }
 
           const handle = await window.showSaveFilePicker({
             suggestedName: filename,
@@ -1243,6 +1189,12 @@
         if (err?.name !== 'AbortError') {
           console.error('Save PNG failed:', err);
         }
+      } finally {
+        saveInProgress = false;
+        if (cameraReady) {
+          saveBtn.disabled = false;
+          captureBtn.disabled = false;
+        }
       }
     }
 
@@ -1269,9 +1221,6 @@
         updateStats();
         saveBtn.disabled = false;
         captureBtn.disabled = false;
-        chooseRefBtn.disabled = false;
-        updatePlanarTrackingUI();
-        setPlanarTrackSource(cropCanvas);
         startRenderLoops();
 
         if (appSettings.imageProcessing === 'barcodeDetection') {
@@ -1287,7 +1236,6 @@
 
     saveBtn.addEventListener('click', savePng);
     captureBtn.addEventListener('click', savePng);
-    chooseRefBtn.addEventListener('click', captureReferenceImage);
 
     function isPageFullscreenSupported() {
       const root = document.documentElement;

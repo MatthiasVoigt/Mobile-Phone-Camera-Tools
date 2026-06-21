@@ -37,10 +37,10 @@
     }
 
     .top-bar {
-      display: flex;
+      display: grid;
+      grid-template-columns: 2.5rem 1fr auto;
       align-items: center;
-      justify-content: center;
-      position: relative;
+      gap: 0.5rem;
       min-height: 2.5rem;
       padding: 0.75rem 1rem;
       border-bottom: 1px solid #1e1e1e;
@@ -48,8 +48,6 @@
     }
 
     .back-btn {
-      position: absolute;
-      left: 1rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -61,30 +59,41 @@
       cursor: pointer;
       border-radius: 8px;
       touch-action: manipulation;
+      justify-self: start;
     }
 
     .back-btn:active { background: var(--surface); }
 
-    .top-bar h1 {
-      font-size: 1.1rem;
-      font-weight: 600;
-    }
-
-    .top-confirm-btn {
-      position: absolute;
-      right: 1rem;
+    .top-confirm-btn,
+    .top-set-default-btn {
       padding: 0.45rem 0.85rem;
       font-size: 0.9rem;
       font-weight: 600;
-      color: #fff;
-      background: var(--accent);
-      border: none;
       border-radius: 8px;
       cursor: pointer;
       touch-action: manipulation;
+      white-space: nowrap;
+    }
+
+    .top-confirm-btn {
+      grid-column: 2;
+      justify-self: center;
+      color: #fff;
+      background: var(--accent);
+      border: none;
     }
 
     .top-confirm-btn:active { background: var(--accent-pressed); }
+
+    .top-set-default-btn {
+      grid-column: 3;
+      justify-self: end;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .top-set-default-btn:active { background: #1f1f1f; }
 
     main {
       flex: 1;
@@ -227,25 +236,6 @@
       transform: translateX(1.15rem);
     }
 
-    footer {
-      padding: 0.75rem 1rem 0;
-      flex-shrink: 0;
-    }
-
-    .confirm-btn {
-      width: 100%;
-      padding: 0.9rem 1.25rem;
-      font-size: 1rem;
-      font-weight: 600;
-      color: #fff;
-      background: var(--accent);
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      touch-action: manipulation;
-    }
-
-    .confirm-btn:active { background: var(--accent-pressed); }
   </style>
 </head>
 <body>
@@ -255,8 +245,8 @@
         <path d="M15 18l-6-6 6-6"/>
       </svg>
     </button>
-    <h1>Settings</h1>
     <button class="top-confirm-btn" id="topConfirmBtn" type="button">Confirm</button>
+    <button class="top-set-default-btn" id="setDefaultBtn" type="button">Reset Settings</button>
   </div>
 
   <main>
@@ -267,7 +257,7 @@
           type="text"
           class="text-input"
           id="imageLabel"
-          placeholder="e.g. experiment1"
+          placeholder="e.g. Item_01"
           maxlength="64"
           autocomplete="off"
           spellcheck="false"
@@ -375,10 +365,6 @@
         <input type="radio" name="imageProcessing" value="barcodeDetection">
         <span>Barcode detection</span>
       </label>
-      <label class="option">
-        <input type="radio" name="imageProcessing" value="planarTracking">
-        <span>Planar tracking</span>
-      </label>
       <div class="sub-setting hidden" id="blendRatioSetting">
         <label for="movingAverageRatio">
           <span>Current frame mix</span>
@@ -465,57 +451,54 @@
     </div>
   </main>
 
-  <footer>
-    <button class="confirm-btn" id="confirmBtn" type="button">Confirm</button>
-  </footer>
-
   <script src="settings.js"></script>
   <script>
-    const settings = loadSettings();
+    let settings = loadSettings();
     const imageLabelInput = document.getElementById('imageLabel');
-    imageLabelInput.value = settings.imageLabel || '';
-
-    const resolutionChoice = document.querySelector(
-      `input[name="imageResolution"][value="${settings.imageResolution}"]`
-    );
-    if (resolutionChoice) resolutionChoice.checked = true;
-
-    const selected = document.querySelector(`input[name="cropSize"][value="${settings.cropSize}"]`);
-    if (selected) selected.checked = true;
-
-    const savedMagnification = normalizeImageMagnification(settings.imageMagnification);
-    document.querySelectorAll('input[name="imageMagnification"]').forEach((input) => {
-      input.checked = Number(input.value) === savedMagnification;
-    });
-
     const focusScoreToggle = document.getElementById('focusScoreToggle');
     const showHistogramToggle = document.getElementById('showHistogramToggle');
-    focusScoreToggle.checked = Boolean(settings.qualityMetrics?.focusScore);
-    showHistogramToggle.checked = Boolean(settings.qualityMetrics?.showHistogram);
-
-    const processingChoice = document.querySelector(
-      `input[name="imageProcessing"][value="${settings.imageProcessing}"]`
-    );
-    if (processingChoice) processingChoice.checked = true;
-
     const ratioInput = document.getElementById('movingAverageRatio');
     const ratioValue = document.getElementById('movingAverageRatioValue');
     const blendRatioSetting = document.getElementById('blendRatioSetting');
     const barcodeSettings = document.getElementById('barcodeSettings');
     const barcodeFormatSettings = document.getElementById('barcodeFormatSettings');
 
-    ratioInput.value = movingAverageRatioToSlider(settings.movingAverageRatio);
-    ratioValue.textContent = formatMovingAverageRatio(settings.movingAverageRatio);
+    function applySettingsToForm(nextSettings) {
+      imageLabelInput.value = nextSettings.imageLabel || DEFAULT_IMAGE_LABEL;
 
-    const decoderChoice = document.querySelector(
-      `input[name="barcodeDecoder"][value="${settings.barcodeDecoder}"]`
-    );
-    if (decoderChoice) decoderChoice.checked = true;
+      document.querySelectorAll('input[name="imageResolution"]').forEach((input) => {
+        input.checked = input.value === nextSettings.imageResolution;
+      });
 
-    const formatChoice = document.querySelector(
-      `input[name="barcodeFormat"][value="${settings.barcodeFormat}"]`
-    );
-    if (formatChoice) formatChoice.checked = true;
+      document.querySelectorAll('input[name="cropSize"]').forEach((input) => {
+        input.checked = Number(input.value) === nextSettings.cropSize;
+      });
+
+      const magnification = normalizeImageMagnification(nextSettings.imageMagnification);
+      document.querySelectorAll('input[name="imageMagnification"]').forEach((input) => {
+        input.checked = Number(input.value) === magnification;
+      });
+
+      focusScoreToggle.checked = Boolean(nextSettings.qualityMetrics?.focusScore);
+      showHistogramToggle.checked = Boolean(nextSettings.qualityMetrics?.showHistogram);
+
+      document.querySelectorAll('input[name="imageProcessing"]').forEach((input) => {
+        input.checked = input.value === nextSettings.imageProcessing;
+      });
+
+      ratioInput.value = movingAverageRatioToSlider(nextSettings.movingAverageRatio);
+      ratioValue.textContent = formatMovingAverageRatio(nextSettings.movingAverageRatio);
+
+      document.querySelectorAll('input[name="barcodeDecoder"]').forEach((input) => {
+        input.checked = input.value === nextSettings.barcodeDecoder;
+      });
+
+      document.querySelectorAll('input[name="barcodeFormat"]').forEach((input) => {
+        input.checked = input.value === nextSettings.barcodeFormat;
+      });
+
+      updateProcessingSubSettings();
+    }
 
     function updateProcessingSubSettings() {
       const mode = document.querySelector('input[name="imageProcessing"]:checked')?.value;
@@ -526,7 +509,7 @@
       barcodeFormatSettings.classList.toggle('hidden', !showBarcode);
     }
 
-    updateProcessingSubSettings();
+    applySettingsToForm(settings);
 
     document.querySelectorAll('input[name="imageProcessing"]').forEach((input) => {
       input.addEventListener('change', updateProcessingSubSettings);
@@ -584,9 +567,15 @@
       goBack();
     }
 
+    function resetSettings() {
+      settings = getDefaultSettings();
+      saveSettings(settings);
+      goBack();
+    }
+
     document.getElementById('backBtn').addEventListener('click', confirmSettings);
-    document.getElementById('confirmBtn').addEventListener('click', confirmSettings);
     document.getElementById('topConfirmBtn').addEventListener('click', confirmSettings);
+    document.getElementById('setDefaultBtn').addEventListener('click', resetSettings);
   </script>
 </body>
 </html>

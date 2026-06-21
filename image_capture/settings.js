@@ -1,7 +1,7 @@
 const SETTINGS_KEY = 'experiment1-settings';
-const DEFAULT_IMAGE_LABEL = '';
+const DEFAULT_IMAGE_LABEL = 'Item_01';
 const DEFAULT_IMAGE_COUNTER = 1;
-const DEFAULT_CROP_SIZE = 1500;
+const DEFAULT_CROP_SIZE = 800;
 const CROP_SIZE_OPTIONS = [500, 800, 1000, 1500];
 const IMAGE_RESOLUTION_OPTIONS = ['max', '1920x1080', '1280x720'];
 const DEFAULT_IMAGE_RESOLUTION = 'max';
@@ -14,8 +14,7 @@ const IMAGE_PROCESSING_OPTIONS = [
   'edgeMap',
   'movingAverage',
   'changeDetection',
-  'barcodeDetection',
-  'planarTracking'
+  'barcodeDetection'
 ];
 const MIN_MOVING_AVERAGE_RATIO = 0.01;
 const MAX_MOVING_AVERAGE_RATIO = 0.9;
@@ -52,7 +51,7 @@ const BARCODE_FORMAT_OPTIONS = BARCODE_FORMATS.map((format) => format.id);
 const DEFAULT_BARCODE_FORMAT = 'data_matrix';
 const DEFAULT_QUALITY_METRICS = {
   focusScore: true,
-  showHistogram: true
+  showHistogram: false
 };
 const IMAGE_MAGNIFICATION_OPTIONS = [1, 2, 3, 4, 6, 8];
 const DEFAULT_IMAGE_MAGNIFICATION = 2;
@@ -95,8 +94,12 @@ function getImageResolutionLabel(resolutionId) {
 function normalizeQualityMetrics(value) {
   const source = value && typeof value === 'object' ? value : {};
   return {
-    focusScore: Boolean(source.focusScore),
-    showHistogram: Boolean(source.showHistogram)
+    focusScore: 'focusScore' in source
+      ? Boolean(source.focusScore)
+      : DEFAULT_QUALITY_METRICS.focusScore,
+    showHistogram: 'showHistogram' in source
+      ? Boolean(source.showHistogram)
+      : DEFAULT_QUALITY_METRICS.showHistogram
   };
 }
 
@@ -132,22 +135,26 @@ function getRequestedResolution(imageResolution, maxWidth, maxHeight) {
   return { width: preset.width, height: preset.height };
 }
 
+function getDefaultSettings() {
+  return {
+    imageLabel: DEFAULT_IMAGE_LABEL,
+    imageCounter: DEFAULT_IMAGE_COUNTER,
+    imageResolution: DEFAULT_IMAGE_RESOLUTION,
+    imageMagnification: DEFAULT_IMAGE_MAGNIFICATION,
+    cropSize: DEFAULT_CROP_SIZE,
+    qualityMetrics: { ...DEFAULT_QUALITY_METRICS },
+    imageProcessing: 'none',
+    movingAverageRatio: DEFAULT_MOVING_AVERAGE_RATIO,
+    barcodeDecoder: DEFAULT_BARCODE_DECODER,
+    barcodeFormat: DEFAULT_BARCODE_FORMAT
+  };
+}
+
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) {
-      return {
-        imageLabel: DEFAULT_IMAGE_LABEL,
-        imageCounter: DEFAULT_IMAGE_COUNTER,
-        imageResolution: DEFAULT_IMAGE_RESOLUTION,
-        imageMagnification: DEFAULT_IMAGE_MAGNIFICATION,
-        cropSize: DEFAULT_CROP_SIZE,
-        qualityMetrics: { ...DEFAULT_QUALITY_METRICS },
-        imageProcessing: 'none',
-        movingAverageRatio: DEFAULT_MOVING_AVERAGE_RATIO,
-        barcodeDecoder: DEFAULT_BARCODE_DECODER,
-        barcodeFormat: DEFAULT_BARCODE_FORMAT
-      };
+      return getDefaultSettings();
     }
 
     const parsed = JSON.parse(raw);
@@ -173,7 +180,9 @@ function loadSettings() {
     const imageCounter = Number(parsed.imageCounter);
 
     return {
-      imageLabel: typeof parsed.imageLabel === 'string' ? parsed.imageLabel : DEFAULT_IMAGE_LABEL,
+      imageLabel: typeof parsed.imageLabel === 'string' && parsed.imageLabel.trim()
+        ? parsed.imageLabel
+        : DEFAULT_IMAGE_LABEL,
       imageCounter: Number.isFinite(imageCounter) && imageCounter >= 1
         ? Math.floor(imageCounter)
         : DEFAULT_IMAGE_COUNTER,
@@ -191,18 +200,7 @@ function loadSettings() {
       barcodeFormat
     };
   } catch {
-    return {
-      imageLabel: DEFAULT_IMAGE_LABEL,
-      imageCounter: DEFAULT_IMAGE_COUNTER,
-      imageResolution: DEFAULT_IMAGE_RESOLUTION,
-      imageMagnification: DEFAULT_IMAGE_MAGNIFICATION,
-      cropSize: DEFAULT_CROP_SIZE,
-      qualityMetrics: { ...DEFAULT_QUALITY_METRICS },
-      imageProcessing: 'none',
-      movingAverageRatio: DEFAULT_MOVING_AVERAGE_RATIO,
-      barcodeDecoder: DEFAULT_BARCODE_DECODER,
-      barcodeFormat: DEFAULT_BARCODE_FORMAT
-    };
+    return getDefaultSettings();
   }
 }
 
