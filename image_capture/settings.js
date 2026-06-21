@@ -370,12 +370,13 @@ function incrementLabelTrailingNumber(label) {
   return `${prefix}${String(next).padStart(digits.length, '0')}`;
 }
 
-function buildImageFilename(settings) {
+function buildImageFilename(settings, focusScoreTag = '') {
   const base = sanitizeImageLabel(settings.imageLabel);
   const counter = Number.isFinite(Number(settings.imageCounter)) && Number(settings.imageCounter) >= 1
     ? Number(settings.imageCounter)
     : DEFAULT_IMAGE_COUNTER;
-  return `${base}_seq_${counter}.png`;
+  const focusSuffix = focusScoreTag ? `_${focusScoreTag}` : '';
+  return `${base}_seq_${counter}${focusSuffix}.png`;
 }
 
 function incrementImageCounter(settings) {

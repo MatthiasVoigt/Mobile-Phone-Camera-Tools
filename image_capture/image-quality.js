@@ -245,3 +245,8 @@ function drawMetricsRegionOverlay(ctx, squareSize) {
 function formatFocusScore(score) {
   return `Focus score · ${score.toFixed(1)}`;
 }
+
+function formatFocusScoreForFilename(score) {
+  const value = Math.min(999, Math.max(0, Math.round(Number(score) || 0)));
+  return `F${String(value).padStart(3, '0')}`;
+}

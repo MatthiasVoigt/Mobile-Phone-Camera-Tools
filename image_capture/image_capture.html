@@ -1103,13 +1103,21 @@
       saveInProgress = true;
       captureBtn.disabled = true;
 
-      const filename = buildImageFilename(appSettings);
       const cameraReady = Boolean(video.srcObject && video.videoWidth);
 
       try {
         if (!captureFrameForSave()) {
           throw new Error('Could not capture image from camera.');
         }
+
+        let focusScoreTag = '';
+        if (appSettings.qualityMetrics?.focusScore) {
+          const metricsSample = sampleCenterRegionFromCanvas(cropCanvas);
+          const focusScore = metricsSample ? computeFocusScore(metricsSample) : 0;
+          focusScoreTag = formatFocusScoreForFilename(focusScore);
+        }
+
+        const filename = buildImageFilename(appSettings, focusScoreTag);
 
         if ('showSaveFilePicker' in window) {
           const blob = await new Promise((resolve) => {
