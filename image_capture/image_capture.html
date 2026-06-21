@@ -77,6 +77,42 @@
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
     }
 
+    #pageTitle {
+      pointer-events: auto;
+      cursor: pointer;
+      padding: 0.2rem 0.5rem;
+      border-radius: 8px;
+      max-width: min(14rem, calc(100vw - 9rem));
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #pageTitle:active {
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .page-title-input {
+      pointer-events: auto;
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-align: center;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 8px;
+      padding: 0.2rem 0.5rem;
+      width: min(14rem, calc(100vw - 9rem));
+      max-width: 100%;
+      outline: none;
+      text-shadow: none;
+    }
+
+    .page-title-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
     .stats {
       margin-top: 0.35rem;
       font-size: 0.8rem;
@@ -425,7 +461,7 @@
                   <path d="M8 3v3H3M16 3v3h5M16 21v-3h5M8 21v-3H3"/>
                 </svg>
               </button>
-              <h1 id="pageTitle">Image Capture</h1>
+              <h1 id="pageTitle" title="Tap to edit image label">Image Capture</h1>
             </div>
             <p class="stats" id="stats">Starting camera…</p>
           </div>
@@ -482,7 +518,6 @@
   <script src="barcode-detection.js"></script>
   <script src="planar-tracking.js"></script>
   <script>
-    const TARGET_ZOOM = 2;
     const WIDE_ASPECT = 16 / 9;
 
     const video = document.getElementById('video');
@@ -522,7 +557,7 @@
     let wideAnimationId = null;
     let centerLoopActive = false;
     let centerInFlight = false;
-    let reportedZoom = TARGET_ZOOM;
+    let reportedZoom = DEFAULT_IMAGE_MAGNIFICATION;
     let appSettings = loadSettings();
 
     let lastProcessingKey = '';
@@ -532,6 +567,60 @@
       const title = label || 'Image Capture';
       pageTitle.textContent = title;
       document.title = title;
+    }
+
+    function commitPageTitleEdit(input, restorePrevious) {
+      if (input.dataset.finished === 'true') return;
+      input.dataset.finished = 'true';
+
+      if (!restorePrevious) {
+        const previousLabel = appSettings.imageLabel ?? '';
+        const newLabel = input.value;
+        const labelChanged = newLabel !== previousLabel;
+
+        appSettings.imageLabel = newLabel;
+        if (labelChanged) {
+          appSettings.imageCounter = DEFAULT_IMAGE_COUNTER;
+        }
+        saveSettings(appSettings);
+      }
+
+      input.replaceWith(pageTitle);
+      updatePageTitle();
+    }
+
+    function startPageTitleEdit() {
+      if (!pageTitle.isConnected || pageTitle.parentElement?.querySelector('.page-title-input')) {
+        return;
+      }
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'page-title-input';
+      input.value = appSettings.imageLabel ?? '';
+      input.placeholder = 'Image Capture';
+      input.maxLength = 64;
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      input.setAttribute('aria-label', 'Image label');
+
+      pageTitle.replaceWith(input);
+      input.focus();
+      input.select();
+
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          commitPageTitleEdit(input, false);
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          commitPageTitleEdit(input, true);
+        }
+      });
+
+      input.addEventListener('blur', () => {
+        commitPageTitleEdit(input, false);
+      });
     }
 
     function updateZoomLabel(size) {
@@ -685,13 +774,29 @@
 
     function applyStoredSettings() {
       const previousResolution = appSettings.imageResolution;
+      const previousMagnification = appSettings.imageMagnification;
       appSettings = loadSettings();
       updatePageTitle();
       applyCropSize(appSettings.cropSize);
       syncProcessingState();
       updatePlanarTrackingUI();
       updateQualityMetricsOverlay();
-      return previousResolution !== appSettings.imageResolution;
+      return {
+        resolutionChanged: previousResolution !== appSettings.imageResolution,
+        magnificationChanged: previousMagnification !== appSettings.imageMagnification
+      };
+    }
+
+    async function applyZoomToActiveTrack() {
+      const track = video.srcObject?.getVideoTracks?.()[0];
+      if (!track) return;
+
+      try {
+        await applyZoom(track);
+        updateStats();
+      } catch (err) {
+        console.error('Failed to apply magnification:', err);
+      }
     }
 
     async function restartCamera() {
@@ -730,6 +835,10 @@
       const track = temp.getVideoTracks()[0];
       const caps = track.getCapabilities?.() ?? {};
 
+      if (caps.zoom) {
+        saveZoomCapabilities(caps.zoom.min ?? 1, caps.zoom.max ?? 1);
+      }
+
       temp.getTracks().forEach((t) => t.stop());
 
       const maxWidth = caps.width?.max ?? null;
@@ -758,22 +867,25 @@
 
     async function applyZoom(track) {
       const capabilities = track.getCapabilities?.() ?? {};
+      const min = capabilities.zoom?.min ?? 1;
+      const max = capabilities.zoom?.max ?? 1;
+      saveZoomCapabilities(min, max);
+
       if (!capabilities.zoom) {
-        reportedZoom = TARGET_ZOOM;
+        reportedZoom = 1;
         return false;
       }
 
-      const min = capabilities.zoom.min ?? 1;
-      const max = capabilities.zoom.max ?? 1;
-      const target = Math.min(Math.max(TARGET_ZOOM, min), max);
+      const requested = normalizeImageMagnification(appSettings.imageMagnification, { min, max });
+      appSettings.imageMagnification = requested;
 
       try {
-        await track.applyConstraints({ advanced: [{ zoom: target }] });
-        const settings = track.getSettings();
-        reportedZoom = settings.zoom ?? target;
+        await track.applyConstraints({ advanced: [{ zoom: requested }] });
+        const trackSettings = track.getSettings();
+        reportedZoom = trackSettings.zoom ?? requested;
         return true;
       } catch {
-        reportedZoom = TARGET_ZOOM;
+        reportedZoom = requested;
         return false;
       }
     }
@@ -961,39 +1073,94 @@
       updateMetricsRegionOverlay(squareSize);
     }
 
+    let saveInProgress = false;
+
+    function waitForCaptureFrame(delayMs = 0) {
+      return new Promise((resolve) => {
+        requestAnimationFrame(() => {
+          setTimeout(resolve, delayMs);
+        });
+      });
+    }
+
+    async function captureCurrentFrameBlob() {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh) {
+        return null;
+      }
+
+      const centerCrop = getCenterCropRegion(vw, vh, appSettings.cropSize);
+      renderCenterView(video, centerCrop);
+
+      return new Promise((resolve) => {
+        zoomCanvas.toBlob(resolve, 'image/png');
+      });
+    }
+
+    async function saveImageBlob(blob, filename, useSavePicker) {
+      if (useSavePicker && 'showSaveFilePicker' in window) {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [
+            {
+              description: 'PNG Image',
+              accept: { 'image/png': ['.png'] }
+            }
+          ]
+        });
+
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
+      }
+
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
     async function savePng() {
-      const filename = buildImageFilename(appSettings);
+      if (saveInProgress) return;
+
+      const sequenceLength = normalizeCaptureSequenceLength(appSettings.captureSequenceLength);
+      const isSequence = sequenceLength > 1;
+      const useSavePicker = !isSequence && 'showSaveFilePicker' in window;
+
+      saveInProgress = true;
+      saveBtn.disabled = true;
+      captureBtn.disabled = true;
 
       try {
-        if ('showSaveFilePicker' in window) {
-          const blob = await new Promise((resolve) => {
-            zoomCanvas.toBlob(resolve, 'image/png');
-          });
-          if (!blob) return;
+        for (let sequenceIndex = 1; sequenceIndex <= sequenceLength; sequenceIndex += 1) {
+          if (sequenceIndex > 1) {
+            await waitForCaptureFrame(100);
+          }
 
-          const handle = await window.showSaveFilePicker({
-            suggestedName: filename,
-            types: [
-              {
-                description: 'PNG Image',
-                accept: { 'image/png': ['.png'] }
-              }
-            ]
-          });
+          const blob = await captureCurrentFrameBlob();
+          if (!blob) {
+            throw new Error('Could not capture image from camera.');
+          }
 
-          const writable = await handle.createWritable();
-          await writable.write(blob);
-          await writable.close();
-        } else {
-          const link = document.createElement('a');
-          link.download = filename;
-          link.href = zoomCanvas.toDataURL('image/png');
-          link.click();
+          const filename = buildImageFilename(
+            appSettings,
+            isSequence ? sequenceIndex : null
+          );
+          await saveImageBlob(blob, filename, useSavePicker);
         }
 
         incrementImageCounter(appSettings);
       } catch (err) {
-        console.error('Save PNG failed:', err);
+        if (err?.name !== 'AbortError') {
+          console.error('Save PNG failed:', err);
+        }
+      } finally {
+        saveInProgress = false;
+        saveBtn.disabled = false;
+        captureBtn.disabled = false;
       }
     }
 
@@ -1072,6 +1239,8 @@
       }
     }
 
+    pageTitle.addEventListener('click', startPageTitleEdit);
+
     backBtn.addEventListener('click', () => {
       window.location.href = '../index.html';
     });
@@ -1085,10 +1254,12 @@
     document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
     updateFullscreenButton();
 
-    window.addEventListener('pageshow', (event) => {
-      const resolutionChanged = applyStoredSettings();
+    window.addEventListener('pageshow', async (event) => {
+      const { resolutionChanged, magnificationChanged } = applyStoredSettings();
       if (resolutionChanged || event.persisted) {
-        restartCamera();
+        await restartCamera();
+      } else if (magnificationChanged) {
+        await applyZoomToActiveTrack();
       }
     });
 
