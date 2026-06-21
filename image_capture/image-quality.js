@@ -1,6 +1,6 @@
 const FOCUS_REGION_SIZE = 200;
-const FOCUS_TOP_RANK = 100;
-const BRIGHTNESS_TOP_RANK = 100;
+const FOCUS_TOP_RANK = 20;
+const BRIGHTNESS_TOP_RANK = 20;
 const FOCUS_AVERAGE_WINDOW_MS = 1000;
 
 const focusScoreHistory = [];
