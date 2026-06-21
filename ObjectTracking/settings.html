@@ -190,13 +190,13 @@
 
   <main>
     <div class="setting-group">
-      <h2>OpenCV</h2>
-      <label class="toggle-option" for="testOpenCvToggle">
-        <span>Test OpenCV integration</span>
-        <input type="checkbox" class="toggle-input" id="testOpenCvToggle">
+      <h2>Image preprocessing</h2>
+      <label class="toggle-option" for="applyBlurToggle">
+        <span>Apply blur</span>
+        <input type="checkbox" class="toggle-input" id="applyBlurToggle">
         <span class="toggle-switch" aria-hidden="true"></span>
       </label>
-      <p class="hint">When enabled, the center view shows a blurred crop from the live camera to verify OpenCV is working.</p>
+      <p class="hint">When enabled, apply a 3 × 3 Gaussian blur to the center crop before reference features are extracted. The blurred image is shown in the center view.</p>
     </div>
 
     <div class="setting-group">
@@ -252,10 +252,10 @@
   <script src="settings.js"></script>
   <script>
     let settings = loadTrackingSettings();
-    const testOpenCvToggle = document.getElementById('testOpenCvToggle');
+    const applyBlurToggle = document.getElementById('applyBlurToggle');
 
     function applySettingsToForm(nextSettings) {
-      testOpenCvToggle.checked = Boolean(nextSettings.testOpenCvIntegration);
+      applyBlurToggle.checked = Boolean(nextSettings.applyBlur);
 
       document.querySelectorAll('input[name="cropSize"]').forEach((input) => {
         input.checked = Number(input.value) === nextSettings.cropSize;
@@ -271,7 +271,7 @@
       const detectorChoice = document.querySelector('input[name="featureDetector"]:checked');
 
       saveTrackingSettings({
-        testOpenCvIntegration: testOpenCvToggle.checked,
+        applyBlur: applyBlurToggle.checked,
         cropSize: cropChoice ? normalizeCropSize(Number(cropChoice.value)) : DEFAULT_CROP_SIZE,
         featureDetector: detectorChoice
           ? normalizeFeatureDetector(detectorChoice.value)

@@ -80,6 +80,14 @@ function applyBlurKernel3(imageData) {
   }
 }
 
+function preprocessImageData(imageData, applyBlur) {
+  if (!applyBlur) {
+    return cloneImageData(imageData);
+  }
+
+  return applyBlurKernel3(imageData);
+}
+
 function createFeatureDetector(detectorId) {
   switch (detectorId) {
     case 'akaze':

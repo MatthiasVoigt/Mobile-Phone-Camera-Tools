@@ -14,7 +14,7 @@ const FEATURE_DETECTOR_LABELS = {
 
 function getDefaultTrackingSettings() {
   return {
-    testOpenCvIntegration: false,
+    applyBlur: false,
     cropSize: DEFAULT_CROP_SIZE,
     featureDetector: DEFAULT_FEATURE_DETECTOR
   };
@@ -38,7 +38,7 @@ function loadTrackingSettings() {
 
     const parsed = JSON.parse(raw);
     return {
-      testOpenCvIntegration: Boolean(parsed.testOpenCvIntegration),
+      applyBlur: Boolean(parsed.applyBlur),
       cropSize: normalizeCropSize(parsed.cropSize),
       featureDetector: normalizeFeatureDetector(parsed.featureDetector)
     };

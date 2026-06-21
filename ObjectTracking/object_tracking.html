@@ -47,7 +47,7 @@
 
     .wide-view {
       width: 100%;
-      aspect-ratio: 16 / 9;
+      aspect-ratio: 4 / 3;
       background: var(--surface);
       overflow: hidden;
       position: relative;
@@ -56,8 +56,7 @@
     .wide-view canvas {
       display: block;
       width: 100%;
-      height: auto;
-      aspect-ratio: 16 / 9;
+      height: 100%;
     }
 
     .wide-overlay {
@@ -241,7 +240,7 @@
     <p class="error hidden" id="errorEl"></p>
 
     <section class="wide-section" aria-label="Live camera">
-      <div class="wide-view">
+      <div class="wide-view" id="wideView">
         <canvas id="wideCanvas"></canvas>
         <div class="wide-overlay">
           <div class="wide-overlay-top">
@@ -300,6 +299,7 @@
   <script src="opencv-processing.js"></script>
   <script>
     const video = document.getElementById('video');
+    const wideView = document.getElementById('wideView');
     const wideCanvas = document.getElementById('wideCanvas');
     const centerCanvas = document.getElementById('centerCanvas');
     const wideCtx = wideCanvas.getContext('2d');
@@ -322,6 +322,7 @@
     let activeStream = null;
     let renderLoopActive = false;
     let openCvLoadState = 'idle';
+    let referenceRawImageData = null;
     let referenceImageData = null;
     let referenceFeatures = null;
     let referenceAnnotatedImage = null;
@@ -352,8 +353,9 @@
         return;
       }
 
+      const blurSuffix = appSettings.applyBlur ? ' · blur 3×3' : '';
       centerFeatureType.textContent = `Feature · ${getFeatureDetectorLabel(features.detectorId)}`;
-      centerFeatureConfig.textContent = `Config · ${features.configDescription}`;
+      centerFeatureConfig.textContent = `Config · ${features.configDescription}${blurSuffix}`;
       centerFeatureCount.textContent = `Features used · ${features.totalCount} (${features.visualizedCount} shown)`;
       centerMetrics.classList.remove('hidden');
     }
@@ -395,12 +397,13 @@
     }
 
     function updateReferenceButton() {
-      captureReferenceBtn.textContent = referenceImageData && referenceFeatures
+      captureReferenceBtn.textContent = referenceRawImageData && referenceFeatures
         ? 'Reset tracking features'
         : 'Capture reference image';
     }
 
     function resetTracking() {
+      referenceRawImageData = null;
       referenceImageData = null;
       clearTrackingFeatures();
       updateReferenceButton();
@@ -430,19 +433,33 @@
       await video.play();
     }
 
+    function updateWideViewLayout() {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh) {
+        return;
+      }
+
+      wideView.style.aspectRatio = `${vw} / ${vh}`;
+    }
+
     function drawWidePreview() {
       const vw = video.videoWidth;
       const vh = video.videoHeight;
       if (!vw || !vh) return;
 
-      const displayW = wideCanvas.clientWidth || vw;
-      const displayH = Math.round(displayW * 9 / 16);
+      updateWideViewLayout();
+
+      const displayW = Math.round(wideView.clientWidth);
+      const displayH = Math.round(wideView.clientHeight);
+      if (!displayW || !displayH) return;
+
       if (wideCanvas.width !== displayW || wideCanvas.height !== displayH) {
         wideCanvas.width = displayW;
         wideCanvas.height = displayH;
       }
 
-      wideCtx.drawImage(video, 0, 0, displayW, displayH);
+      wideCtx.drawImage(video, 0, 0, vw, vh, 0, 0, displayW, displayH);
 
       if (lastTrackingResult?.found) {
         drawPerspectiveCross(
@@ -454,28 +471,37 @@
       }
     }
 
-    function drawLiveCenterCrop() {
+    async function renderLiveCenterCrop() {
       const crop = captureCenterCrop(video, appSettings.cropSize);
-      if (!crop) return;
+      if (!crop) return null;
+
+      if (!appSettings.applyBlur) {
+        putImageDataOnCanvas(centerCanvas, crop);
+        setCenterLabel(`Center view · live crop · ${appSettings.cropSize} × ${appSettings.cropSize}`);
+        return crop;
+      }
+
+      if (openCvLoadState === 'ready') {
+        const blurred = preprocessImageData(crop, true);
+        putImageDataOnCanvas(centerCanvas, blurred);
+        setCenterLabel(`Center view · blurred crop · ${appSettings.cropSize} × ${appSettings.cropSize}`);
+        return blurred;
+      }
+
       putImageDataOnCanvas(centerCanvas, crop);
+      setCenterLabel(
+        openCvLoadState === 'loading'
+          ? 'Center view · loading OpenCV for blur…'
+          : 'Center view · OpenCV unavailable'
+      );
       return crop;
     }
 
-    async function renderOpenCvTestFrame() {
-      const crop = captureCenterCrop(video, appSettings.cropSize);
-      if (!crop) return;
-
-      await loadOpenCv();
-      const blurred = applyBlurKernel3(crop);
-      putImageDataOnCanvas(centerCanvas, blurred);
-      setCenterLabel(`Center view · OpenCV blur · ${appSettings.cropSize} × ${appSettings.cropSize}`);
-      centerMetrics.classList.add('hidden');
-    }
-
     async function buildReferenceFeatures() {
-      if (!referenceImageData) return;
+      if (!referenceRawImageData) return;
 
       await loadOpenCv();
+      referenceImageData = preprocessImageData(referenceRawImageData, appSettings.applyBlur);
       releaseReferenceFeatures(referenceFeatures);
       referenceFeatures = extractReferenceFeatures(referenceImageData, appSettings.featureDetector);
 
@@ -490,7 +516,7 @@
     }
 
     function renderReferenceView() {
-      if (!referenceImageData) return;
+      if (!referenceRawImageData || !referenceImageData) return;
 
       const imageToShow = referenceAnnotatedImage || referenceImageData;
       putImageDataOnCanvas(centerCanvas, imageToShow);
@@ -503,26 +529,12 @@
       processingInFlight = true;
 
       try {
-        if (referenceImageData) {
+        if (referenceRawImageData) {
           renderReferenceView();
           return;
         }
 
-        if (appSettings.testOpenCvIntegration) {
-          if (openCvLoadState === 'ready') {
-            await renderOpenCvTestFrame();
-          } else if (openCvLoadState === 'loading') {
-            drawLiveCenterCrop();
-            setCenterLabel('Center view · loading OpenCV…');
-          } else {
-            drawLiveCenterCrop();
-            setCenterLabel('Center view · OpenCV unavailable');
-          }
-          return;
-        }
-
-        drawLiveCenterCrop();
-        setCenterLabel(`Center view · live crop · ${appSettings.cropSize} × ${appSettings.cropSize}`);
+        await renderLiveCenterCrop();
         centerMetrics.classList.add('hidden');
       } catch (err) {
         console.error('Center view render failed:', err);
@@ -559,9 +571,10 @@
 
       trackingInFlight = true;
       try {
+        const processedFrame = preprocessImageData(frame, appSettings.applyBlur);
         lastTrackingResult = estimatePlanarPatternCenter(
           referenceFeatures,
-          frame,
+          processedFrame,
           { width: referenceImageData.width, height: referenceImageData.height }
         );
       } catch (err) {
@@ -613,9 +626,6 @@
       } catch (err) {
         openCvLoadState = 'failed';
         console.error('OpenCV load failed:', err);
-        if (appSettings.testOpenCvIntegration) {
-          showError('OpenCV could not be loaded. Check your network connection and reload the page.');
-        }
         return false;
       } finally {
         updateStats();
@@ -623,14 +633,12 @@
     }
 
     async function captureReferenceImage() {
-      if (!centerCanvas.width || !centerCanvas.height) {
+      const crop = captureCenterCrop(video, appSettings.cropSize);
+      if (!crop) {
         return;
       }
 
-      const ctx = centerCanvas.getContext('2d');
-      referenceImageData = cloneImageData(
-        ctx.getImageData(0, 0, centerCanvas.width, centerCanvas.height)
-      );
+      referenceRawImageData = cloneImageData(crop);
 
       try {
         await ensureOpenCv();
@@ -646,10 +654,14 @@
 
     function applyStoredSettings() {
       const previousDetector = appSettings.featureDetector;
+      const previousBlur = appSettings.applyBlur;
       appSettings = loadTrackingSettings();
       applyCropMaxCss();
 
-      if (referenceImageData && previousDetector !== appSettings.featureDetector) {
+      if (
+        referenceRawImageData &&
+        (previousDetector !== appSettings.featureDetector || previousBlur !== appSettings.applyBlur)
+      ) {
         buildReferenceFeatures()
           .then(() => {
             renderReferenceView();
@@ -677,6 +689,7 @@
           video.addEventListener('loadedmetadata', resolve, { once: true });
         });
 
+        updateWideViewLayout();
         captureReferenceBtn.disabled = false;
         startRenderLoop();
         ensureOpenCv();
@@ -697,7 +710,7 @@
     });
 
     captureReferenceBtn.addEventListener('click', async () => {
-      if (referenceImageData && referenceFeatures) {
+      if (referenceRawImageData && referenceFeatures) {
         resetTracking();
         await renderFrame();
         return;
