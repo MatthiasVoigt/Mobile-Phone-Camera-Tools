@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <link rel="icon" href="data:,">
-  <title>Experiment 1</title>
+  <title>Mobile Phone Camera Tools</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -14,752 +14,87 @@
       --text: #f0f0f0;
       --muted: #888;
       --accent: #3b82f6;
-      --accent-pressed: #2563eb;
+      --border: #333;
+      --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     html, body {
-      height: 100%;
+      min-height: 100%;
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       -webkit-tap-highlight-color: transparent;
-      overflow-x: hidden;
     }
 
     body {
       display: flex;
       flex-direction: column;
       min-height: 100dvh;
-      padding-bottom: calc(1rem + var(--safe-bottom));
+      padding-top: var(--safe-top);
+      padding-bottom: calc(1.5rem + var(--safe-bottom));
     }
 
     header {
-      padding: 0.75rem 1rem 0.5rem;
-      flex-shrink: 0;
-      position: relative;
+      padding: 1.25rem 1rem 1rem;
+      text-align: center;
     }
-
-    .top-bar {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 2.5rem;
-      position: relative;
-    }
-
-    .menu-btn {
-      position: absolute;
-      left: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 2.5rem;
-      height: 2.5rem;
-      background: none;
-      border: none;
-      color: var(--text);
-      cursor: pointer;
-      border-radius: 8px;
-      touch-action: manipulation;
-    }
-
-    .menu-btn:active { background: var(--surface); }
 
     h1 {
       font-size: 1.25rem;
       font-weight: 600;
       letter-spacing: 0.02em;
-      text-align: center;
     }
 
-    .stats {
+    .subtitle {
       margin-top: 0.35rem;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       color: var(--muted);
-      line-height: 1.4;
-      text-align: center;
-    }
-
-    .stats span {
-      color: var(--text);
-      font-variant-numeric: tabular-nums;
     }
 
     main {
       flex: 1;
+      padding: 0 1rem;
+    }
+
+    .tool-list {
+      list-style: none;
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
-      padding: 0 0 0.75rem;
+      gap: 0.65rem;
     }
 
-    .wide-section {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
-    .wide-section .zoom-label {
-      padding: 0 0.75rem;
-    }
-
-    .wide-view {
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      background: var(--surface);
-      overflow: hidden;
-      position: relative;
-    }
-
-    .wide-view canvas {
+    .tool-link {
       display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .zoom-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0 0.75rem;
-    }
-
-    .zoom-label {
-      font-size: 0.75rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .zoom-view {
-      width: 100%;
-      max-width: min(100vw - 1.5rem, var(--crop-max, 1500px));
-      aspect-ratio: 1 / 1;
+      padding: 1rem 1.1rem;
       background: var(--surface);
-      border: 1px solid #222;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .zoom-view canvas {
-      display: block;
-      width: 100%;
-      height: auto;
-      aspect-ratio: 1 / 1;
-    }
-
-    footer {
-      padding: 0.75rem 1rem 0;
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    .footer-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .action-btn {
-      flex: 1;
-      padding: 0.9rem 0.75rem;
-      font-size: 0.95rem;
-      font-weight: 600;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 1rem;
+      font-weight: 500;
       touch-action: manipulation;
       transition: background 0.15s;
     }
 
-    .save-btn {
-      color: #fff;
-      background: var(--accent);
-    }
-
-    .save-btn:active {
-      background: var(--accent-pressed);
-    }
-
-    .save-btn:disabled,
-    .action-btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    .secondary-btn {
-      color: var(--text);
-      background: var(--surface);
-      border: 1px solid #333;
-    }
-
-    .secondary-btn:active {
+    .tool-link:active {
       background: #1f1f1f;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .reference-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .reference-view {
-      width: 100%;
-      max-width: min(100vw - 2rem, var(--crop-max, 1500px));
-      aspect-ratio: 1 / 1;
-      background: var(--surface);
-      border: 1px solid #222;
-      border-radius: 4px;
-      overflow: hidden;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .reference-view canvas {
-      display: block;
-      width: 100%;
-      height: auto;
-      aspect-ratio: 1 / 1;
-    }
-
-    .reference-empty {
-      position: absolute;
-      font-size: 0.8rem;
-      color: var(--muted);
-      text-align: center;
-      padding: 0 1rem;
-    }
-
-    .reference-empty.hidden {
-      display: none;
-    }
-
-    .error {
-      margin: 1rem;
-      padding: 1rem;
-      background: #2a1010;
-      border: 1px solid #5c2020;
-      border-radius: 8px;
-      color: #f88;
-      font-size: 0.9rem;
-      line-height: 1.5;
-      display: none;
-    }
-
-    .error.visible { display: block; }
-
-    #video {
-      position: fixed;
-      width: 1px;
-      height: 1px;
-      opacity: 0;
-      pointer-events: none;
     }
   </style>
 </head>
 <body>
   <header>
-    <div class="top-bar">
-      <button class="menu-btn" id="menuBtn" type="button" aria-label="Settings">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <line x1="4" y1="7" x2="20" y2="7"/>
-          <line x1="4" y1="12" x2="20" y2="12"/>
-          <line x1="4" y1="17" x2="20" y2="17"/>
-        </svg>
-      </button>
-      <h1 id="pageTitle">Experiment 1</h1>
-    </div>
-    <p class="stats" id="stats">Starting camera…</p>
+    <h1>Mobile Phone Camera Tools</h1>
+    <p class="subtitle">Choose a tool</p>
   </header>
 
-  <p class="error" id="error"></p>
-
   <main>
-    <section class="wide-section" aria-label="Wide view">
-      <span class="zoom-label" id="maxResolutionLabel">Max resolution · …</span>
-      <div class="wide-view">
-        <canvas id="wideCanvas"></canvas>
-      </div>
-    </section>
-
-    <section class="zoom-section" aria-label="Center zoom">
-      <span class="zoom-label" id="zoomLabel">Center crop · 1500 × 1500</span>
-      <div class="zoom-view">
-        <canvas id="zoomCanvas" width="1500" height="1500"></canvas>
-      </div>
-    </section>
+    <ul class="tool-list">
+      <li>
+        <a class="tool-link" href="image_capture/image_capture.html">Image Capture</a>
+      </li>
+    </ul>
   </main>
-
-  <footer>
-    <div class="footer-actions">
-      <button class="action-btn save-btn" id="saveBtn" type="button" disabled>Save PNG</button>
-      <button class="action-btn secondary-btn hidden" id="chooseRefBtn" type="button" disabled>
-        Choose Reference Image
-      </button>
-    </div>
-    <section class="reference-section hidden" id="referenceSection" aria-label="Reference image">
-      <span class="zoom-label">Reference image</span>
-      <div class="reference-view">
-        <canvas id="referenceDisplayCanvas"></canvas>
-        <p class="reference-empty" id="referenceEmpty">No reference selected</p>
-      </div>
-    </section>
-  </footer>
-
-  <video id="video" playsinline autoplay muted></video>
-  <canvas id="cropCanvas" hidden></canvas>
-
-  <script src="settings.js"></script>
-  <script src="image-processing.js"></script>
-  <script src="barcode-detection.js"></script>
-  <script src="planar-tracking.js"></script>
-  <script>
-    const TARGET_ZOOM = 2;
-    const WIDE_ASPECT = 16 / 9;
-
-    const video = document.getElementById('video');
-    const wideCanvas = document.getElementById('wideCanvas');
-    const zoomCanvas = document.getElementById('zoomCanvas');
-    const wideCtx = wideCanvas.getContext('2d');
-    const zoomCtx = zoomCanvas.getContext('2d');
-    const statsEl = document.getElementById('stats');
-    const errorEl = document.getElementById('error');
-    const saveBtn = document.getElementById('saveBtn');
-    const chooseRefBtn = document.getElementById('chooseRefBtn');
-    const referenceSection = document.getElementById('referenceSection');
-    const referenceDisplayCanvas = document.getElementById('referenceDisplayCanvas');
-    const referenceEmpty = document.getElementById('referenceEmpty');
-    const menuBtn = document.getElementById('menuBtn');
-    const pageTitle = document.getElementById('pageTitle');
-    const maxResolutionLabel = document.getElementById('maxResolutionLabel');
-    const zoomLabel = document.getElementById('zoomLabel');
-    const zoomView = document.querySelector('.zoom-view');
-    const referenceView = document.querySelector('.reference-view');
-
-    const cropCanvas = document.getElementById('cropCanvas');
-    const cropCtx = cropCanvas.getContext('2d', { willReadFrequently: true });
-
-    let wideAnimationId = null;
-    let centerLoopActive = false;
-    let centerInFlight = false;
-    let reportedZoom = TARGET_ZOOM;
-    let appSettings = loadSettings();
-
-    let lastProcessingKey = '';
-
-    function updatePageTitle() {
-      const label = String(appSettings.imageLabel ?? '').trim();
-      const title = label || 'Experiment 1';
-      pageTitle.textContent = title;
-      document.title = title;
-    }
-
-    function updateZoomLabel(size) {
-      const modeLabel = getProcessingLabel(appSettings);
-      const mode = modeLabel ? ` · ${modeLabel}` : '';
-      zoomLabel.textContent = `Center crop · ${size} × ${size}${mode}`;
-    }
-
-    function syncProcessingState() {
-      const key = [
-        appSettings.imageProcessing,
-        appSettings.movingAverageRatio,
-        appSettings.cropSize,
-        appSettings.barcodeDecoder,
-        appSettings.barcodeFormat
-      ].join(':');
-
-      if (key !== lastProcessingKey) {
-        resetMovingAverage();
-        resetBarcodeDetection();
-        resetPlanarReference();
-        lastProcessingKey = key;
-      }
-    }
-
-    function updatePlanarTrackingUI() {
-      const active = appSettings.imageProcessing === 'planarTracking';
-      chooseRefBtn.classList.toggle('hidden', !active);
-      referenceSection.classList.toggle('hidden', !active);
-      referenceView.style.setProperty('--crop-max', `${appSettings.cropSize}px`);
-      updateReferenceView();
-    }
-
-    function updateReferenceView() {
-      const shown = drawPlanarReference(referenceDisplayCanvas);
-      referenceEmpty.classList.toggle('hidden', shown);
-      referenceDisplayCanvas.classList.toggle('hidden', !shown);
-    }
-
-    function captureReferenceImage() {
-      if (!cropCanvas.width || !cropCanvas.height) return;
-      if (capturePlanarReference(cropCanvas)) {
-        updateReferenceView();
-      }
-    }
-
-    function applyCropSize(size) {
-      appSettings.cropSize = size;
-      updateZoomLabel(size);
-      zoomView.style.setProperty('--crop-max', `${size}px`);
-      referenceView.style.setProperty('--crop-max', `${size}px`);
-    }
-
-    function ensureCenterCanvases(squareSize) {
-      if (cropCanvas.width !== squareSize || cropCanvas.height !== squareSize) {
-        cropCanvas.width = squareSize;
-        cropCanvas.height = squareSize;
-      }
-      if (zoomCanvas.width !== squareSize || zoomCanvas.height !== squareSize) {
-        zoomCanvas.width = squareSize;
-        zoomCanvas.height = squareSize;
-        updateZoomLabel(squareSize);
-      }
-    }
-
-    function applyStoredSettings() {
-      appSettings = loadSettings();
-      updatePageTitle();
-      applyCropSize(appSettings.cropSize);
-      syncProcessingState();
-      updatePlanarTrackingUI();
-    }
-
-    function showError(message) {
-      errorEl.textContent = message;
-      errorEl.classList.add('visible');
-      statsEl.textContent = 'Camera unavailable';
-    }
-
-    function updateMaxResolutionLabel(maxWidth, maxHeight) {
-      if (maxWidth && maxHeight) {
-        maxResolutionLabel.textContent = `Max resolution · ${maxWidth} × ${maxHeight}`;
-        return;
-      }
-
-      const w = video.videoWidth;
-      const h = video.videoHeight;
-      maxResolutionLabel.textContent = w && h
-        ? `Max resolution · ${w} × ${h}`
-        : 'Max resolution · unavailable';
-    }
-
-    async function getMaxResolutionStream() {
-      const temp = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-        audio: false
-      });
-      const track = temp.getVideoTracks()[0];
-      const caps = track.getCapabilities?.() ?? {};
-
-      temp.getTracks().forEach((t) => t.stop());
-
-      const maxWidth = caps.width?.max ?? null;
-      const maxHeight = caps.height?.max ?? null;
-
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: maxWidth ?? 4096 },
-            height: { ideal: maxHeight ?? 4096 }
-          },
-          audio: false
-        });
-      } catch {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-          audio: false
-        });
-      }
-
-      return { stream, maxWidth, maxHeight };
-    }
-
-    async function applyZoom(track) {
-      const capabilities = track.getCapabilities?.() ?? {};
-      if (!capabilities.zoom) {
-        reportedZoom = TARGET_ZOOM;
-        return false;
-      }
-
-      const min = capabilities.zoom.min ?? 1;
-      const max = capabilities.zoom.max ?? 1;
-      const target = Math.min(Math.max(TARGET_ZOOM, min), max);
-
-      try {
-        await track.applyConstraints({ advanced: [{ zoom: target }] });
-        const settings = track.getSettings();
-        reportedZoom = settings.zoom ?? target;
-        return true;
-      } catch {
-        reportedZoom = TARGET_ZOOM;
-        return false;
-      }
-    }
-
-    function updateStats() {
-      const w = video.videoWidth;
-      const h = video.videoHeight;
-      if (!w || !h) return;
-
-      const settings = video.srcObject?.getVideoTracks?.()[0]?.getSettings?.() ?? {};
-      const zoomLabel = reportedZoom.toFixed(1);
-
-      statsEl.innerHTML =
-        `Resolution: <span>${w} × ${h}</span> · Magnification: <span>${zoomLabel}×</span>` +
-        (settings.width && settings.height
-          ? `<br>Track: <span>${settings.width} × ${settings.height}</span>`
-          : '');
-    }
-
-    function getWideCropRegion(vw, vh) {
-      let cropW = vw;
-      let cropH = vw / WIDE_ASPECT;
-      if (cropH > vh) {
-        cropH = vh;
-        cropW = vh * WIDE_ASPECT;
-      }
-      return {
-        srcX: (vw - cropW) / 2,
-        srcY: (vh - cropH) / 2,
-        cropW,
-        cropH
-      };
-    }
-
-    function getCenterCropRegion(vw, vh, size) {
-      const squareSize = Math.min(size, vw, vh);
-      return {
-        sqX: (vw - squareSize) / 2,
-        sqY: (vh - squareSize) / 2,
-        squareSize
-      };
-    }
-
-    function drawCropOverlay(ctx, centerCrop, wideCrop, displayW, displayH) {
-      const { sqX, sqY, squareSize } = centerCrop;
-      const { srcX, srcY, cropW, cropH } = wideCrop;
-
-      const rectX = ((sqX - srcX) / cropW) * displayW;
-      const rectY = ((sqY - srcY) / cropH) * displayH;
-      const rectW = (squareSize / cropW) * displayW;
-      const rectH = (squareSize / cropH) * displayH;
-
-      ctx.save();
-      ctx.setLineDash([8, 5]);
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
-      ctx.strokeRect(rectX + 1, rectY + 1, rectW, rectH);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.strokeRect(rectX, rectY, rectW, rectH);
-      ctx.restore();
-    }
-
-    function drawWideFrame() {
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      if (!vw || !vh) {
-        wideAnimationId = requestAnimationFrame(drawWideFrame);
-        return;
-      }
-
-      const container = wideCanvas.parentElement;
-      const displayW = container.clientWidth;
-      const displayH = container.clientHeight;
-      if (wideCanvas.width !== displayW || wideCanvas.height !== displayH) {
-        wideCanvas.width = displayW;
-        wideCanvas.height = displayH;
-      }
-
-      const wideCrop = getWideCropRegion(vw, vh);
-      const centerCrop = getCenterCropRegion(vw, vh, appSettings.cropSize);
-
-      wideCtx.drawImage(
-        video,
-        wideCrop.srcX, wideCrop.srcY, wideCrop.cropW, wideCrop.cropH,
-        0, 0, displayW, displayH
-      );
-
-      drawCropOverlay(wideCtx, centerCrop, wideCrop, displayW, displayH);
-      wideAnimationId = requestAnimationFrame(drawWideFrame);
-    }
-
-    function startRenderLoops() {
-      stopRenderLoops();
-      centerLoopActive = true;
-      wideAnimationId = requestAnimationFrame(drawWideFrame);
-      queueCenterFrame();
-    }
-
-    function stopRenderLoops() {
-      centerLoopActive = false;
-      centerInFlight = false;
-      if (wideAnimationId) {
-        cancelAnimationFrame(wideAnimationId);
-        wideAnimationId = null;
-      }
-    }
-
-    function queueCenterFrame() {
-      if (!centerLoopActive || centerInFlight) return;
-
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      if (!vw || !vh) {
-        setTimeout(queueCenterFrame, 16);
-        return;
-      }
-
-      centerInFlight = true;
-      const centerCrop = getCenterCropRegion(vw, vh, appSettings.cropSize);
-
-      setTimeout(() => {
-        if (!centerLoopActive) {
-          centerInFlight = false;
-          return;
-        }
-
-        try {
-          renderCenterView(video, centerCrop);
-        } catch (err) {
-          console.error('Center view render failed:', err);
-        } finally {
-          centerInFlight = false;
-          if (centerLoopActive) {
-            queueCenterFrame();
-          }
-        }
-      }, 0);
-    }
-
-    function renderCenterView(source, centerCrop) {
-      const { sqX, sqY, squareSize } = centerCrop;
-
-      ensureCenterCanvases(squareSize);
-
-      cropCtx.drawImage(
-        source,
-        sqX, sqY, squareSize, squareSize,
-        0, 0, squareSize, squareSize
-      );
-
-      zoomCtx.clearRect(0, 0, squareSize, squareSize);
-
-      if (appSettings.imageProcessing === 'barcodeDetection') {
-        zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
-        scheduleBarcodeDetection(cropCanvas, appSettings);
-        drawBarcodeOverlay(zoomCtx, getLastBarcodeResult(), squareSize);
-        return;
-      }
-
-      if (appSettings.imageProcessing === 'planarTracking') {
-        zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
-        const tracking = getPlanarTrackingResult();
-        drawPlanarTrackingOverlay(zoomCtx, tracking, squareSize);
-        if (hasPlanarReference()) {
-          drawPlanarTrackingStatus(zoomCtx, tracking, squareSize);
-        }
-        return;
-      }
-
-      syncProcessingState();
-
-      const cropped = cropCtx.getImageData(0, 0, squareSize, squareSize);
-      const processed = applyImageProcessing(cropped, appSettings);
-      cropCtx.putImageData(processed, 0, 0);
-
-      zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
-    }
-
-    function savePng() {
-      zoomCanvas.toBlob((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = buildImageFilename(appSettings);
-        link.click();
-        URL.revokeObjectURL(url);
-        incrementImageCounter(appSettings);
-      }, 'image/png');
-    }
-
-    async function init() {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        showError('Camera access is not supported in this browser.');
-        return;
-      }
-
-      try {
-        const { stream, maxWidth, maxHeight } = await getMaxResolutionStream();
-        const track = stream.getVideoTracks()[0];
-        video.srcObject = stream;
-        updateMaxResolutionLabel(maxWidth, maxHeight);
-
-        await video.play();
-        await applyZoom(track);
-
-        await new Promise((resolve) => {
-          if (video.videoWidth) return resolve();
-          video.addEventListener('loadedmetadata', resolve, { once: true });
-        });
-
-        updateStats();
-        saveBtn.disabled = false;
-        chooseRefBtn.disabled = false;
-        updatePlanarTrackingUI();
-        setPlanarTrackSource(cropCanvas);
-        startRenderLoops();
-
-        if (appSettings.imageProcessing === 'barcodeDetection') {
-          setTimeout(() => enableBarcodeDetection(), 1000);
-        }
-      } catch (err) {
-        showError(
-          'Could not open the environment camera. Use HTTPS or localhost and grant camera permission. ' +
-          (err.message || err.name || '')
-        );
-      }
-    }
-
-    saveBtn.addEventListener('click', savePng);
-    chooseRefBtn.addEventListener('click', captureReferenceImage);
-
-    menuBtn.addEventListener('click', () => {
-      window.location.href = 'settings.html';
-    });
-
-    window.addEventListener('pageshow', (event) => {
-      applyStoredSettings();
-      if (event.persisted) {
-        init();
-      }
-    });
-
-    window.addEventListener('resize', () => {
-      if (video.videoWidth) updateStats();
-    });
-
-    window.addEventListener('beforeunload', () => {
-      stopRenderLoops();
-      video.srcObject?.getTracks?.().forEach((t) => t.stop());
-    });
-
-    applyStoredSettings();
-    init();
-  </script>
 </body>
 </html>
