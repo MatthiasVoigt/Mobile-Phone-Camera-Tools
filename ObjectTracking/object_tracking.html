@@ -246,6 +246,11 @@
         <div class="wide-overlay">
           <div class="wide-overlay-top">
             <div class="top-bar">
+              <button class="overlay-btn back-btn" id="backBtn" type="button" aria-label="Back to tools">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M15 18l-6-6 6-6"/>
+                </svg>
+              </button>
               <button class="overlay-btn menu-btn" id="menuBtn" type="button" aria-label="Settings">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
                   <line x1="4" y1="7" x2="20" y2="7"/>
@@ -254,7 +259,7 @@
                 </svg>
               </button>
               <div class="page-title">Object Tracking</div>
-              <div style="width:2.5rem;flex-shrink:0;"></div>
+              <div style="width:5.35rem;flex-shrink:0;"></div>
             </div>
             <p class="stats" id="stats">Starting camera…</p>
             <div class="overlay-metrics" id="topMetrics">
@@ -310,6 +315,7 @@
     const matchedMetric = document.getElementById('matchedMetric');
     const captureReferenceBtn = document.getElementById('captureReferenceBtn');
     const zoomView = document.getElementById('zoomView');
+    const backBtn = document.getElementById('backBtn');
     const menuBtn = document.getElementById('menuBtn');
 
     let appSettings = loadTrackingSettings();
@@ -681,6 +687,10 @@
         );
       }
     }
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = '../index.html';
+    });
 
     menuBtn.addEventListener('click', () => {
       window.location.href = 'settings.html';
