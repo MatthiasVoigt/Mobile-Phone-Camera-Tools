@@ -198,6 +198,22 @@
     </div>
 
     <div class="setting-group">
+      <h2>Image resolution</h2>
+      <label class="option">
+        <input type="radio" name="imageResolution" value="max">
+        <span>Maximum</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageResolution" value="1920x1080">
+        <span>1920 × 1080</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageResolution" value="1280x720">
+        <span>1280 × 720</span>
+      </label>
+    </div>
+
+    <div class="setting-group">
       <h2>Center crop size</h2>
       <label class="option">
         <input type="radio" name="cropSize" value="500">
@@ -339,6 +355,11 @@
     const imageLabelInput = document.getElementById('imageLabel');
     imageLabelInput.value = settings.imageLabel || '';
 
+    const resolutionChoice = document.querySelector(
+      `input[name="imageResolution"][value="${settings.imageResolution}"]`
+    );
+    if (resolutionChoice) resolutionChoice.checked = true;
+
     const selected = document.querySelector(`input[name="cropSize"][value="${settings.cropSize}"]`);
     if (selected) selected.checked = true;
 
@@ -393,6 +414,8 @@
     document.getElementById('backBtn').addEventListener('click', goBack);
 
     document.getElementById('confirmBtn').addEventListener('click', () => {
+      const resolution = document.querySelector('input[name="imageResolution"]:checked');
+      const imageResolution = resolution ? resolution.value : DEFAULT_IMAGE_RESOLUTION;
       const choice = document.querySelector('input[name="cropSize"]:checked');
       const cropSize = choice ? Number(choice.value) : DEFAULT_CROP_SIZE;
       const processing = document.querySelector('input[name="imageProcessing"]:checked');
@@ -409,6 +432,7 @@
       saveSettings({
         imageLabel,
         imageCounter,
+        imageResolution,
         cropSize,
         imageProcessing,
         movingAverageRatio,

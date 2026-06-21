@@ -3,6 +3,12 @@ const DEFAULT_IMAGE_LABEL = '';
 const DEFAULT_IMAGE_COUNTER = 1;
 const DEFAULT_CROP_SIZE = 1500;
 const CROP_SIZE_OPTIONS = [500, 800, 1000, 1500];
+const IMAGE_RESOLUTION_OPTIONS = ['max', '1920x1080', '1280x720'];
+const DEFAULT_IMAGE_RESOLUTION = 'max';
+const IMAGE_RESOLUTION_PRESETS = {
+  '1920x1080': { width: 1920, height: 1080 },
+  '1280x720': { width: 1280, height: 720 }
+};
 const IMAGE_PROCESSING_OPTIONS = [
   'none',
   'edgeMap',
@@ -75,6 +81,24 @@ function formatMovingAverageRatio(ratio) {
   return clamped < 0.1 ? clamped.toFixed(2) : clamped.toFixed(1);
 }
 
+function getImageResolutionLabel(resolutionId) {
+  if (resolutionId === 'max') return 'Maximum';
+  const preset = IMAGE_RESOLUTION_PRESETS[resolutionId];
+  return preset ? `${preset.width} × ${preset.height}` : 'Maximum';
+}
+
+function getRequestedResolution(imageResolution, maxWidth, maxHeight) {
+  if (imageResolution === 'max' || !IMAGE_RESOLUTION_PRESETS[imageResolution]) {
+    return {
+      width: maxWidth ?? 4096,
+      height: maxHeight ?? 4096
+    };
+  }
+
+  const preset = IMAGE_RESOLUTION_PRESETS[imageResolution];
+  return { width: preset.width, height: preset.height };
+}
+
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
@@ -82,6 +106,7 @@ function loadSettings() {
       return {
         imageLabel: DEFAULT_IMAGE_LABEL,
         imageCounter: DEFAULT_IMAGE_COUNTER,
+        imageResolution: DEFAULT_IMAGE_RESOLUTION,
         cropSize: DEFAULT_CROP_SIZE,
         imageProcessing: 'none',
         movingAverageRatio: DEFAULT_MOVING_AVERAGE_RATIO,
@@ -106,6 +131,9 @@ function loadSettings() {
     const barcodeFormat = BARCODE_FORMAT_OPTIONS.includes(parsed.barcodeFormat)
       ? parsed.barcodeFormat
       : DEFAULT_BARCODE_FORMAT;
+    const imageResolution = IMAGE_RESOLUTION_OPTIONS.includes(parsed.imageResolution)
+      ? parsed.imageResolution
+      : DEFAULT_IMAGE_RESOLUTION;
 
     const imageCounter = Number(parsed.imageCounter);
 
@@ -114,6 +142,7 @@ function loadSettings() {
       imageCounter: Number.isFinite(imageCounter) && imageCounter >= 1
         ? Math.floor(imageCounter)
         : DEFAULT_IMAGE_COUNTER,
+      imageResolution,
       cropSize: CROP_SIZE_OPTIONS.includes(cropSize) ? cropSize : DEFAULT_CROP_SIZE,
       imageProcessing,
       movingAverageRatio: Number.isFinite(movingAverageRatio)
@@ -126,6 +155,7 @@ function loadSettings() {
     return {
       imageLabel: DEFAULT_IMAGE_LABEL,
       imageCounter: DEFAULT_IMAGE_COUNTER,
+      imageResolution: DEFAULT_IMAGE_RESOLUTION,
       cropSize: DEFAULT_CROP_SIZE,
       imageProcessing: 'none',
       movingAverageRatio: DEFAULT_MOVING_AVERAGE_RATIO,

@@ -15,6 +15,7 @@
       --muted: #888;
       --accent: #3b82f6;
       --accent-pressed: #2563eb;
+      --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
@@ -34,12 +35,6 @@
       padding-bottom: calc(1rem + var(--safe-bottom));
     }
 
-    header {
-      padding: 0.75rem 1rem 0.5rem;
-      flex-shrink: 0;
-      position: relative;
-    }
-
     .top-bar {
       display: flex;
       align-items: center;
@@ -56,33 +51,37 @@
       justify-content: center;
       width: 2.5rem;
       height: 2.5rem;
-      background: none;
+      background: rgba(0, 0, 0, 0.35);
       border: none;
-      color: var(--text);
+      color: #fff;
       cursor: pointer;
       border-radius: 8px;
       touch-action: manipulation;
+      pointer-events: auto;
     }
 
-    .menu-btn:active { background: var(--surface); }
+    .menu-btn:active { background: rgba(0, 0, 0, 0.55); }
 
     h1 {
       font-size: 1.25rem;
       font-weight: 600;
       letter-spacing: 0.02em;
       text-align: center;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
     }
 
     .stats {
       margin-top: 0.35rem;
       font-size: 0.8rem;
-      color: var(--muted);
+      color: rgba(255, 255, 255, 0.75);
       line-height: 1.4;
-      text-align: center;
+      text-align: left;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
     }
 
     .stats span {
-      color: var(--text);
+      color: #fff;
       font-variant-numeric: tabular-nums;
     }
 
@@ -95,13 +94,7 @@
     }
 
     .wide-section {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
-    .wide-section .zoom-label {
-      padding: 0 0.75rem;
+      flex-shrink: 0;
     }
 
     .wide-view {
@@ -119,11 +112,44 @@
       object-fit: cover;
     }
 
+    .wide-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .wide-overlay-top {
+      padding: calc(0.75rem + var(--safe-top)) 1rem 1.25rem;
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.72) 0%,
+        rgba(0, 0, 0, 0.35) 55%,
+        transparent 100%
+      );
+    }
+
+    .wide-overlay-bottom {
+      padding: 1rem 0.75rem 0.65rem;
+      background: linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.55) 0%,
+        transparent 100%
+      );
+    }
+
+    .wide-overlay-bottom .zoom-label {
+      color: rgba(255, 255, 255, 0.8);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
     .zoom-section {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.4rem;
       padding: 0 0.75rem;
     }
 
@@ -142,6 +168,7 @@
       border: 1px solid #222;
       border-radius: 4px;
       overflow: hidden;
+      position: relative;
     }
 
     .zoom-view canvas {
@@ -149,6 +176,66 @@
       width: 100%;
       height: auto;
       aspect-ratio: 1 / 1;
+    }
+
+    .zoom-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .zoom-overlay-top {
+      padding: 0.65rem 0.85rem 1.5rem;
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.72) 0%,
+        rgba(0, 0, 0, 0.35) 55%,
+        transparent 100%
+      );
+    }
+
+    .zoom-overlay-top .zoom-label {
+      color: rgba(255, 255, 255, 0.8);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    .zoom-overlay-bottom {
+      display: flex;
+      justify-content: center;
+      padding: 1.5rem 0.85rem 1rem;
+      background: linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.55) 0%,
+        transparent 100%
+      );
+    }
+
+    .capture-btn {
+      width: 4rem;
+      height: 4rem;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.9);
+      background: #ef4444;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      touch-action: manipulation;
+      pointer-events: auto;
+      flex-shrink: 0;
+      padding: 0;
+    }
+
+    .capture-btn:active:not(:disabled) {
+      background: #dc2626;
+      transform: scale(0.96);
+    }
+
+    .capture-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
 
     footer {
@@ -269,34 +356,44 @@
   </style>
 </head>
 <body>
-  <header>
-    <div class="top-bar">
-      <button class="menu-btn" id="menuBtn" type="button" aria-label="Settings">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <line x1="4" y1="7" x2="20" y2="7"/>
-          <line x1="4" y1="12" x2="20" y2="12"/>
-          <line x1="4" y1="17" x2="20" y2="17"/>
-        </svg>
-      </button>
-      <h1 id="pageTitle">Image Capture</h1>
-    </div>
-    <p class="stats" id="stats">Starting camera…</p>
-  </header>
-
   <p class="error" id="error"></p>
 
   <main>
     <section class="wide-section" aria-label="Wide view">
-      <span class="zoom-label" id="maxResolutionLabel">Max resolution · …</span>
       <div class="wide-view">
         <canvas id="wideCanvas"></canvas>
+        <div class="wide-overlay">
+          <div class="wide-overlay-top">
+            <div class="top-bar">
+              <button class="menu-btn" id="menuBtn" type="button" aria-label="Settings">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <line x1="4" y1="7" x2="20" y2="7"/>
+                  <line x1="4" y1="12" x2="20" y2="12"/>
+                  <line x1="4" y1="17" x2="20" y2="17"/>
+                </svg>
+              </button>
+              <h1 id="pageTitle">Image Capture</h1>
+            </div>
+            <p class="stats" id="stats">Starting camera…</p>
+          </div>
+          <div class="wide-overlay-bottom">
+            <span class="zoom-label" id="maxResolutionLabel">Max resolution · …</span>
+          </div>
+        </div>
       </div>
     </section>
 
     <section class="zoom-section" aria-label="Center zoom">
-      <span class="zoom-label" id="zoomLabel">Center crop · 1500 × 1500</span>
       <div class="zoom-view">
         <canvas id="zoomCanvas" width="1500" height="1500"></canvas>
+        <div class="zoom-overlay">
+          <div class="zoom-overlay-top">
+            <span class="zoom-label" id="zoomLabel">Center crop · 1500 × 1500</span>
+          </div>
+          <div class="zoom-overlay-bottom">
+            <button class="capture-btn" id="captureBtn" type="button" aria-label="Save PNG" disabled></button>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -336,6 +433,7 @@
     const statsEl = document.getElementById('stats');
     const errorEl = document.getElementById('error');
     const saveBtn = document.getElementById('saveBtn');
+    const captureBtn = document.getElementById('captureBtn');
     const chooseRefBtn = document.getElementById('chooseRefBtn');
     const referenceSection = document.getElementById('referenceSection');
     const referenceDisplayCanvas = document.getElementById('referenceDisplayCanvas');
@@ -429,11 +527,22 @@
     }
 
     function applyStoredSettings() {
+      const previousResolution = appSettings.imageResolution;
       appSettings = loadSettings();
       updatePageTitle();
       applyCropSize(appSettings.cropSize);
       syncProcessingState();
       updatePlanarTrackingUI();
+      return previousResolution !== appSettings.imageResolution;
+    }
+
+    async function restartCamera() {
+      stopRenderLoops();
+      video.srcObject?.getTracks?.().forEach((t) => t.stop());
+      saveBtn.disabled = true;
+      captureBtn.disabled = true;
+      chooseRefBtn.disabled = true;
+      await init();
     }
 
     function showError(message) {
@@ -467,14 +576,15 @@
 
       const maxWidth = caps.width?.max ?? null;
       const maxHeight = caps.height?.max ?? null;
+      const requested = getRequestedResolution(appSettings.imageResolution, maxWidth, maxHeight);
 
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: 'environment' },
-            width: { ideal: maxWidth ?? 4096 },
-            height: { ideal: maxHeight ?? 4096 }
+            width: { ideal: requested.width },
+            height: { ideal: requested.height }
           },
           audio: false
         });
@@ -515,14 +625,11 @@
       const h = video.videoHeight;
       if (!w || !h) return;
 
-      const settings = video.srcObject?.getVideoTracks?.()[0]?.getSettings?.() ?? {};
       const zoomLabel = reportedZoom.toFixed(1);
 
       statsEl.innerHTML =
-        `Resolution: <span>${w} × ${h}</span> · Magnification: <span>${zoomLabel}×</span>` +
-        (settings.width && settings.height
-          ? `<br>Track: <span>${settings.width} × ${settings.height}</span>`
-          : '');
+        `Resolution: <span>${w} × ${h}</span><br>` +
+        `Magnification: <span>${zoomLabel}×</span>`;
     }
 
     function getWideCropRegion(vw, vh) {
@@ -719,6 +826,7 @@
 
         updateStats();
         saveBtn.disabled = false;
+        captureBtn.disabled = false;
         chooseRefBtn.disabled = false;
         updatePlanarTrackingUI();
         setPlanarTrackSource(cropCanvas);
@@ -736,6 +844,7 @@
     }
 
     saveBtn.addEventListener('click', savePng);
+    captureBtn.addEventListener('click', savePng);
     chooseRefBtn.addEventListener('click', captureReferenceImage);
 
     menuBtn.addEventListener('click', () => {
@@ -743,9 +852,9 @@
     });
 
     window.addEventListener('pageshow', (event) => {
-      applyStoredSettings();
-      if (event.persisted) {
-        init();
+      const resolutionChanged = applyStoredSettings();
+      if (resolutionChanged || event.persisted) {
+        restartCamera();
       }
     });
 
