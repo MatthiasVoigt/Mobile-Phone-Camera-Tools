@@ -2,7 +2,7 @@
 
 Choose a tool
 
-## [Image Capture / Image Data Collection](image_capture/image_capture.html)
+## [Image Capture / Image Data Collection](https://matthiasvoigt.github.io/Mobile-Phone-Camera-Tools/image_capture/image_capture.html)
 
 Capture sharp, labeled photos at full camera resolution.
 
