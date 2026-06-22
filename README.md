@@ -20,10 +20,10 @@ Explore what each camera on your device can do.
 - View supported properties, allowed ranges, and current values.
 - Compare cameras with a consistent checklist of common settings.
 
-## [Image Based Object Tracking Performance Evaluation](ObjectTracking/object_tracking.html)
+## [Image Based Surface Tracking Performance Evaluation](ObjectTracking/object_tracking.html)
 
 Evaluate image tracking with live camera input and a reference image.
 
 - Live environment camera stream with center crop reference view.
-- Test OpenCV real time object traking.
+- Test OpenCV real time surface tracking.
 - Capture a reference image and visualize extracted features.
