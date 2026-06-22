@@ -127,8 +127,9 @@
     .zoom-section {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      padding: 0 0.75rem;
+      align-items: stretch;
+      width: 100%;
+      padding: 0;
     }
 
     .zoom-label {
@@ -141,11 +142,10 @@
 
     .zoom-view {
       width: 100%;
-      max-width: min(100vw - 1.5rem, var(--crop-max, 800px));
       aspect-ratio: 1 / 1;
       background: var(--surface);
-      border: 1px solid #222;
-      border-radius: 4px;
+      border-top: 1px solid #222;
+      border-bottom: 1px solid #222;
       overflow: hidden;
       position: relative;
     }
@@ -153,8 +153,7 @@
     .zoom-view canvas {
       display: block;
       width: 100%;
-      height: auto;
-      aspect-ratio: 1 / 1;
+      height: 100%;
     }
 
     .zoom-overlay {
@@ -162,7 +161,7 @@
       inset: 0;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: flex-start;
       pointer-events: none;
       z-index: 2;
     }
@@ -175,23 +174,26 @@
       background: linear-gradient(to bottom, rgba(0,0,0,0.72), transparent);
     }
 
+    .zoom-overlay-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.65rem;
+    }
+
     .zoom-overlay-top .zoom-label {
+      flex: 1;
+      min-width: 0;
       color: rgba(255, 255, 255, 0.8);
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
       margin-bottom: 0;
     }
 
-    .zoom-overlay-bottom {
-      display: flex;
-      justify-content: center;
-      padding: 1.5rem 0.85rem 1rem;
-      background: linear-gradient(to top, rgba(0,0,0,0.55), transparent);
-    }
-
     .capture-btn {
       pointer-events: auto;
-      padding: 0.75rem 1rem;
-      font-size: 0.9rem;
+      flex-shrink: 0;
+      padding: 0.55rem 0.75rem;
+      font-size: 0.8rem;
       font-weight: 600;
       color: #fff;
       background: var(--accent);
@@ -276,17 +278,17 @@
         <canvas id="centerCanvas"></canvas>
         <div class="zoom-overlay">
           <div class="zoom-overlay-top">
-            <span class="zoom-label" id="centerLabel">Center view · live crop</span>
+            <div class="zoom-overlay-header">
+              <span class="zoom-label" id="centerLabel">Center view · live crop</span>
+              <button class="capture-btn" id="captureReferenceBtn" type="button" disabled>
+                Capture reference image
+              </button>
+            </div>
             <div class="overlay-metrics hidden" id="centerMetrics">
               <span id="centerFeatureType">Feature · —</span>
               <span id="centerFeatureConfig">Config · —</span>
               <span id="centerFeatureCount">Features used · —</span>
             </div>
-          </div>
-          <div class="zoom-overlay-bottom">
-            <button class="capture-btn" id="captureReferenceBtn" type="button" disabled>
-              Capture reference image
-            </button>
           </div>
         </div>
       </div>
@@ -314,7 +316,6 @@
     const extractedMetric = document.getElementById('extractedMetric');
     const matchedMetric = document.getElementById('matchedMetric');
     const captureReferenceBtn = document.getElementById('captureReferenceBtn');
-    const zoomView = document.getElementById('zoomView');
     const backBtn = document.getElementById('backBtn');
     const menuBtn = document.getElementById('menuBtn');
 
@@ -329,6 +330,7 @@
     let processingInFlight = false;
     let trackingInFlight = false;
     let lastTrackingResult = null;
+    let lastProcessedFrame = null;
     let lastFrameTimestamp = 0;
     let smoothedFps = 0;
 
@@ -393,6 +395,7 @@
       referenceFeatures = null;
       referenceAnnotatedImage = null;
       lastTrackingResult = null;
+      lastProcessedFrame = null;
       centerMetrics.classList.add('hidden');
     }
 
@@ -408,10 +411,6 @@
       clearTrackingFeatures();
       updateReferenceButton();
       updateTopMetrics(null);
-    }
-
-    function applyCropMaxCss() {
-      zoomView.style.setProperty('--crop-max', `${appSettings.cropSize}px`);
     }
 
     function stopActiveStream() {
@@ -464,7 +463,10 @@
       if (lastTrackingResult?.found) {
         drawPerspectiveCross(
           wideCtx,
-          lastTrackingResult,
+          {
+            center: lastTrackingResult.center,
+            crossSegments: lastTrackingResult.crossSegments
+          },
           displayW / vw,
           displayH / vh
         );
@@ -515,12 +517,54 @@
       referenceFeatures.keypointVector = null;
     }
 
+    function buildCenterViewImage() {
+      const refW = referenceImageData.width;
+      const refH = referenceImageData.height;
+      const matchedKeypoints = lastTrackingResult?.matchedReferenceKeypoints || [];
+      let centerImage;
+      let label;
+
+      if (appSettings.reverseProjection && referenceFeatures) {
+        if (
+          lastTrackingResult?.found &&
+          lastTrackingResult.inverseHomography &&
+          lastProcessedFrame
+        ) {
+          centerImage = warpFrameToReferenceSpace(
+            lastProcessedFrame,
+            lastTrackingResult.inverseHomography,
+            refW,
+            refH
+          );
+          label = 'Center view · reverse projection';
+        } else {
+          centerImage = createGraySurface(refW, refH);
+          label = 'Center view · reverse projection unavailable';
+        }
+      } else if (matchedKeypoints.length > 0) {
+        centerImage = drawFeaturesOnImage(referenceImageData, matchedKeypoints);
+        label = 'Center view · reference image · tracking features';
+      } else {
+        centerImage = referenceAnnotatedImage || referenceImageData;
+        label = 'Center view · reference image';
+      }
+
+      if (matchedKeypoints.length > 0 && appSettings.reverseProjection) {
+        centerImage = drawFeaturesOnImage(centerImage, matchedKeypoints);
+        if (!label.includes('tracking features')) {
+          label += ' · tracking features';
+        }
+      }
+
+      return { centerImage, label };
+    }
+
     function renderReferenceView() {
       if (!referenceRawImageData || !referenceImageData) return;
 
-      const imageToShow = referenceAnnotatedImage || referenceImageData;
-      putImageDataOnCanvas(centerCanvas, imageToShow);
-      setCenterLabel('Center view · reference image');
+      const { centerImage, label } = buildCenterViewImage();
+      putImageDataOnCanvas(centerCanvas, centerImage);
+      setCenterLabel(label);
       updateCenterMetrics(referenceFeatures);
     }
 
@@ -572,6 +616,7 @@
       trackingInFlight = true;
       try {
         const processedFrame = preprocessImageData(frame, appSettings.applyBlur);
+        lastProcessedFrame = processedFrame;
         lastTrackingResult = estimatePlanarPatternCenter(
           referenceFeatures,
           processedFrame,
@@ -656,7 +701,6 @@
       const previousDetector = appSettings.featureDetector;
       const previousBlur = appSettings.applyBlur;
       appSettings = loadTrackingSettings();
-      applyCropMaxCss();
 
       if (
         referenceRawImageData &&
@@ -679,7 +723,6 @@
         return;
       }
 
-      applyCropMaxCss();
       clearError();
 
       try {

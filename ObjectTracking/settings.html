@@ -247,15 +247,27 @@
       </label>
       <p class="hint">Used after capturing a reference image. The top 100 features are drawn on the center view.</p>
     </div>
+
+    <div class="setting-group">
+      <h2>Tracking visualization</h2>
+      <label class="toggle-option" for="reverseProjectionToggle">
+        <span>Reverse projection</span>
+        <input type="checkbox" class="toggle-input" id="reverseProjectionToggle">
+        <span class="toggle-switch" aria-hidden="true"></span>
+      </label>
+      <p class="hint">When tracking is active and a match is found, warp the live top-view frame into the reference image space using the inverse homography and show that projected image in the center view. When no projection is possible, show a gray surface.</p>
+    </div>
   </main>
 
   <script src="settings.js"></script>
   <script>
     let settings = loadTrackingSettings();
     const applyBlurToggle = document.getElementById('applyBlurToggle');
+    const reverseProjectionToggle = document.getElementById('reverseProjectionToggle');
 
     function applySettingsToForm(nextSettings) {
       applyBlurToggle.checked = Boolean(nextSettings.applyBlur);
+      reverseProjectionToggle.checked = Boolean(nextSettings.reverseProjection);
 
       document.querySelectorAll('input[name="cropSize"]').forEach((input) => {
         input.checked = Number(input.value) === nextSettings.cropSize;
@@ -272,6 +284,7 @@
 
       saveTrackingSettings({
         applyBlur: applyBlurToggle.checked,
+        reverseProjection: reverseProjectionToggle.checked,
         cropSize: cropChoice ? normalizeCropSize(Number(cropChoice.value)) : DEFAULT_CROP_SIZE,
         featureDetector: detectorChoice
           ? normalizeFeatureDetector(detectorChoice.value)

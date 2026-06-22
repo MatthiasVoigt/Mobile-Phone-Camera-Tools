@@ -15,6 +15,7 @@ const FEATURE_DETECTOR_LABELS = {
 function getDefaultTrackingSettings() {
   return {
     applyBlur: false,
+    reverseProjection: false,
     cropSize: DEFAULT_CROP_SIZE,
     featureDetector: DEFAULT_FEATURE_DETECTOR
   };
@@ -39,6 +40,7 @@ function loadTrackingSettings() {
     const parsed = JSON.parse(raw);
     return {
       applyBlur: Boolean(parsed.applyBlur),
+      reverseProjection: Boolean(parsed.reverseProjection),
       cropSize: normalizeCropSize(parsed.cropSize),
       featureDetector: normalizeFeatureDetector(parsed.featureDetector)
     };

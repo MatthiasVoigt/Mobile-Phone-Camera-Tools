@@ -276,6 +276,53 @@ function filterGoodMatches(knnMatches) {
   return goodMatches;
 }
 
+function mat3ToArray(mat) {
+  const data = mat.data64F?.length ? mat.data64F : mat.data32F;
+  return Array.from(data.slice(0, 9));
+}
+
+function homographyArrayToMat(values) {
+  return cv.matFromArray(3, 3, cv.CV_64FC1, values);
+}
+
+function warpFrameToReferenceSpace(frameImageData, homographyFlat, referenceWidth, referenceHeight) {
+  const src = imageDataToRgbaMat(frameImageData);
+  const dst = new cv.Mat();
+  const inverseHomography = homographyArrayToMat(homographyFlat);
+  const dsize = new cv.Size(referenceWidth, referenceHeight);
+
+  try {
+    cv.warpPerspective(
+      src,
+      dst,
+      inverseHomography,
+      dsize,
+      cv.INTER_LINEAR,
+      cv.BORDER_CONSTANT,
+      new cv.Scalar(128, 128, 128, 255)
+    );
+    return matToImageData(dst);
+  } finally {
+    src.delete();
+    dst.delete();
+    inverseHomography.delete();
+  }
+}
+
+function createGraySurface(width, height, shade = 128) {
+  const data = new Uint8ClampedArray(width * height * 4);
+
+  for (let i = 0; i < width * height; i++) {
+    const offset = i * 4;
+    data[offset] = shade;
+    data[offset + 1] = shade;
+    data[offset + 2] = shade;
+    data[offset + 3] = 255;
+  }
+
+  return new ImageData(data, width, height);
+}
+
 function estimatePlanarPatternCenter(referenceFeatures, frameImageData, referenceSize) {
   const { keypoints, descriptors } = detectAndComputeFeatures(
     frameImageData,
@@ -288,7 +335,9 @@ function estimatePlanarPatternCenter(referenceFeatures, frameImageData, referenc
     matchedCount: 0,
     found: false,
     center: null,
-    crossSegments: null
+    crossSegments: null,
+    inverseHomography: null,
+    matchedReferenceKeypoints: []
   };
 
   if (!extractedCount || referenceFeatures.totalCount === 0 || descriptors.rows === 0) {
@@ -304,6 +353,10 @@ function estimatePlanarPatternCenter(referenceFeatures, frameImageData, referenc
     matcher.knnMatch(referenceFeatures.descriptors, descriptors, knnMatches, 2);
     const goodMatches = filterGoodMatches(knnMatches);
     result.matchedCount = goodMatches.length;
+    result.matchedReferenceKeypoints = getTopKeypoints(
+      goodMatches.map((match) => referenceFeatures.keypoints[match.queryIdx]),
+      MAX_VISUALIZED_FEATURES
+    );
 
     if (goodMatches.length < MIN_MATCHES_FOR_HOMOGRAPHY) {
       return result;
@@ -369,6 +422,11 @@ function estimatePlanarPatternCenter(referenceFeatures, frameImageData, referenc
           y2: verticalDst.data32F[3]
         }
       ];
+
+      const inverseHomography = new cv.Mat();
+      cv.invert(homography, inverseHomography, cv.DECOMP_LU);
+      result.inverseHomography = mat3ToArray(inverseHomography);
+      inverseHomography.delete();
 
       srcCenter.delete();
       dstCenter.delete();
@@ -447,30 +505,38 @@ function putImageDataOnCanvas(canvas, imageData) {
   ctx.putImageData(imageData, 0, 0);
 }
 
-function drawPerspectiveCross(ctx, trackingResult, scaleX, scaleY) {
-  if (!trackingResult?.found || !trackingResult.crossSegments) {
+function drawPerspectiveCross(ctx, projection, scaleX, scaleY, style = {}) {
+  if (!projection?.crossSegments || !projection.center) {
     return;
   }
 
+  const {
+    strokeStyle = '#22c55e',
+    fillStyle = '#22c55e',
+    lineWidth = 3,
+    centerRadius = 4
+  } = style;
+
   ctx.save();
-  ctx.strokeStyle = '#22c55e';
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = strokeStyle;
+  ctx.lineWidth = lineWidth;
   ctx.lineCap = 'round';
   ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
   ctx.shadowBlur = 4;
 
-  trackingResult.crossSegments.forEach((segment) => {
+  projection.crossSegments.forEach((segment) => {
     ctx.beginPath();
     ctx.moveTo(segment.x1 * scaleX, segment.y1 * scaleY);
     ctx.lineTo(segment.x2 * scaleX, segment.y2 * scaleY);
     ctx.stroke();
   });
 
-  const centerX = trackingResult.center.x * scaleX;
-  const centerY = trackingResult.center.y * scaleY;
-  ctx.fillStyle = '#22c55e';
+  const centerX = projection.center.x * scaleX;
+  const centerY = projection.center.y * scaleY;
+  ctx.fillStyle = fillStyle;
   ctx.beginPath();
-  ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+  ctx.arc(centerX, centerY, centerRadius, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
+
