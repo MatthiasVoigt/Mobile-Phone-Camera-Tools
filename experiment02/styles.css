@@ -44,6 +44,11 @@ body {
   font-weight: 600;
 }
 
+.top-bar-spacer {
+  width: 2.5rem;
+  flex-shrink: 0;
+}
+
 .top-bar-test {
   position: relative;
   align-items: center;

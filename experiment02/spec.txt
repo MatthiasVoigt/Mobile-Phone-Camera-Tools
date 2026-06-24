@@ -71,10 +71,14 @@ Canny parameters at half resolution (`processScale` 0.5, clamped 0.25–1.0).
 
 Page: index.html
 ----------------
-- Header: title "WASM vs JavaScript"
+- Header: ← back to `../index.html` (parent Mobile Phone Camera Tools index),
+  title "WASM vs JavaScript"
 - `section.summary-card.intro-card` — plain-language explanation + 7-step how-to
 - Four `a.menu-btn` links: javascript, wasm, full-optimization, summary
 - No JavaScript files loaded
+
+Parent integration: listed on repo root `index.html` as
+"WebAssembly vs JavaScript Performance Experiment" → `experiment02/index.html`
 
 
 Test page shell (javascript.html, wasm.html, full-optimization.html)
