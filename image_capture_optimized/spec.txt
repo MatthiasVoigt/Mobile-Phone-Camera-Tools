@@ -33,10 +33,12 @@ Hard constraints (must follow when rebuilding)
 4. Default imageResolution must be '1280x720', not 'max'.
 5. Save must encode from #saveCanvas (clean output), never from #zoomCanvas (overlays).
 6. Preview pixel processing runs at reduced resolution; save always uses full crop size.
+7. Focus score WASM must be embedded in JS (SINGLE_FILE=1) — separate .wasm fetch fails
+   on file://. Run ./build-wasm.sh after editing focus-score.cpp.
 
 
-File inventory (7 files)
-------------------------
+File inventory (12 files)
+-------------------------
 HTML
   image_capture.html    Optimized capture UI, throttled loops, fast save path
   settings.html         Same settings UI as original (separate storage key)
@@ -44,8 +46,14 @@ HTML
 Shared JS
   settings.js           Defaults + performance constants
   image-processing.js   Half-res preview processing, full-res save processing
-  image-quality.js      Throttled metrics + OffscreenCanvas PNG encoding
+  image-quality.js      Throttled metrics, WASM/JS focus score, PNG encoding
+  focus-wasm-bridge.js  Load WASM, copy RGBA, call compute_focus_score
   barcode-detection.js  Downscaled scan input, longer detect interval
+
+Focus score WASM
+  focus-score.cpp       C++ focus pipeline (grayscale → blur → Laplacian histogram)
+  build-wasm.sh         Emscripten build script
+  focus-score-wasm.js   Generated embedded WASM (do not hand-edit)
 
 Docs
   spec.txt              This file
@@ -68,6 +76,14 @@ Throttled quality metrics
   METRICS_INTERVAL_MS = 250
   Focus score and histogram computed at most ~4 Hz. Displayed values use the rolling
   1 s focus average between updates.
+
+Focus score WebAssembly
+  computeFocusScore() prefers WASM when FocusScoreModule loaded; falls back to
+  computeFocusScoreJs() on load failure or missing emscripten build.
+  initFocusWasm() runs at camera init (parallel with stream open).
+  Algorithm matches JS: RGBA center sample → grayscale (BT.601) → 3×3 Gaussian blur
+  (edge clamp) → 4-neighbor Laplacian histogram → 20th-ranked value by count.
+  Input region is at most 200×200 (FOCUS_REGION_SIZE); WASM heap 16 MB fixed.
 
 Half-resolution preview processing
   PREVIEW_PROCESS_SCALE = 0.5, PREVIEW_PROCESS_MIN_SIZE = 256
@@ -134,7 +150,8 @@ Same DOM structure as image_capture/ plus hidden canvases:
   #previewProcessCanvas  Half-res buffer for preview processing
 
 Script load order:
-  settings.js → image-quality.js → image-processing.js → barcode-detection.js → inline
+  settings.js → focus-score-wasm.js → focus-wasm-bridge.js → image-quality.js →
+  image-processing.js → barcode-detection.js → inline
 
 Stats line shows requested resolution preset and preview FPS cap:
   "Resolution: W × H · 1280 × 720"
@@ -181,6 +198,37 @@ Module: image-quality.js
 New helpers vs original:
   shouldUpdateMetrics(now, lastUpdateMs)
   canvasToPngBlob(canvas) — OffscreenCanvas.convertToBlob with toBlob fallback
+  computeFocusScoreJs(imageData) — JavaScript fallback pipeline
+  computeFocusScore(imageData) — WASM when ready, else JS
+
+
+Module: focus-wasm-bridge.js
+----------------------------
+  initFocusWasm()              — FocusScoreModule(), await ready; null on failure
+  isFocusWasmReady()
+  setupFocusWasmBuffers(w, h)  — _init_focus_buffers
+  computeFocusScoreWasm(imageData, topRank) — HEAPU8 copy + _compute_focus_score
+
+
+Focus score WASM (focus-score.cpp / build-wasm.sh)
+--------------------------------------------------
+Exported C functions:
+  init_focus_buffers(width, height)   — pre-allocate RGBA + float workspaces
+  get_focus_input_buffer()            — uint8_t* RGBA in
+  compute_focus_score(w, h, top_rank) — returns double score
+
+Build (requires em++):
+  ./build-wasm.sh
+
+  em++ focus-score.cpp -O3 -std=c++17 \
+    -s WASM=1 -s SINGLE_FILE=1 \
+    -s MODULARIZE=1 -s EXPORT_NAME='FocusScoreModule' \
+    -s EXPORTED_FUNCTIONS='["_init_focus_buffers","_get_focus_input_buffer","_compute_focus_score","_malloc","_free"]' \
+    -s EXPORTED_RUNTIME_METHODS='["HEAPU8"]' \
+    -s ALLOW_MEMORY_GROWTH=0 -s INITIAL_MEMORY=16777216 \
+    -o focus-score-wasm.js
+
+Prepends: globalThis.FOCUS_SCORE_WASM_BUILD_ID="<YYYYMMDDHHMMSS>";
 
 
 Module: barcode-detection.js
@@ -215,7 +263,13 @@ image-processing.js:
   needsPixelProcessing, renderProcessedPreview, renderProcessedSave
 
 image-quality.js:
-  shouldUpdateMetrics, canvasToPngBlob
+  shouldUpdateMetrics, canvasToPngBlob, computeFocusScoreJs, computeFocusScore
+
+focus-wasm-bridge.js:
+  initFocusWasm, isFocusWasmReady, computeFocusScoreWasm
+
+FocusScoreModule          Emscripten factory (focus-score-wasm.js)
+FOCUS_SCORE_WASM_BUILD_ID Build timestamp in generated wasm JS
 
 
 Rebuild checklist
@@ -223,16 +277,20 @@ Rebuild checklist
 1. Copy image_capture/ structure into image_capture_optimized/.
 2. Apply settings.js changes (new keys, 1280×720 default, perf constants).
 3. Add preview/save processing helpers in image-processing.js.
-4. Add shouldUpdateMetrics + canvasToPngBlob in image-quality.js.
-5. Add downscaled barcode detect in barcode-detection.js.
-6. Wire optimized loops and save path in image_capture.html:
+4. Implement focus-score.cpp; run ./build-wasm.sh → focus-score-wasm.js.
+5. Add focus-wasm-bridge.js; wire computeFocusScore WASM/JS in image-quality.js.
+6. Add shouldUpdateMetrics + canvasToPngBlob in image-quality.js.
+7. Add downscaled barcode detect in barcode-detection.js.
+8. Wire optimized loops and save path in image_capture.html:
+   - Script order includes focus-score-wasm.js + focus-wasm-bridge.js
+   - initFocusWasm() in init()
    - #saveCanvas, #previewProcessCanvas
    - 30 FPS center cap, 250 ms metrics throttle
    - Half-res preview, full-res save
-7. Update settings.html title; keep separate storage key.
-8. Add index.html link; write this spec.txt.
-9. Verify on Android: smoother preview at 720p default; faster save vs original;
-   saved PNG is full crop resolution with correct processing when mode enabled.
+9. Update settings.html title; keep separate storage key.
+10. Add index.html link; write this spec.txt.
+11. Verify: focus score with WASM loaded; JS fallback if wasm file missing;
+    Android preview at 720p; fast save; full-res PNG output.
 
 
 Operational notes
@@ -241,3 +299,5 @@ Operational notes
 - Preview processing modes look softer/blockier than save output (half-res preview).
 - Focus score in filename reflects the rolling average, not a one-off recomputation.
 - Original image_capture/ settings are independent (different localStorage key).
+- After editing focus-score.cpp: run ./build-wasm.sh, hard-refresh capture page.
+- Check FOCUS_SCORE_WASM_BUILD_ID in focus-score-wasm.js if WASM scores look stale.

@@ -47,7 +47,7 @@ function sampleCenterRegionFromCanvas(sourceCanvas) {
   return metricsSampleCtx.getImageData(0, 0, regionW, regionH);
 }
 
-function computeFocusScore(imageData) {
+function computeFocusScoreJs(imageData) {
   const { data, width, height } = imageData;
   const { startX, startY, regionW, regionH } = getCenterRegionBounds(width, height);
   const gray = extractCenterGray(data, width, startX, startY, regionW, regionH);
@@ -63,6 +63,17 @@ function computeFocusScore(imageData) {
   }
 
   return topValueFromHistogram(histogram, FOCUS_TOP_RANK);
+}
+
+function computeFocusScore(imageData) {
+  if (isFocusWasmReady()) {
+    const wasmScore = computeFocusScoreWasm(imageData, FOCUS_TOP_RANK);
+    if (wasmScore !== null && Number.isFinite(wasmScore)) {
+      return wasmScore;
+    }
+  }
+
+  return computeFocusScoreJs(imageData);
 }
 
 function extractCenterGray(data, width, startX, startY, regionW, regionH) {

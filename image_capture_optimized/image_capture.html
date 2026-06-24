@@ -509,6 +509,8 @@
   <canvas id="previewProcessCanvas" hidden></canvas>
 
   <script src="settings.js"></script>
+  <script src="focus-score-wasm.js"></script>
+  <script src="focus-wasm-bridge.js"></script>
   <script src="image-quality.js"></script>
   <script src="image-processing.js"></script>
   <script src="barcode-detection.js"></script>
@@ -1240,6 +1242,8 @@
       }
 
       try {
+        await initFocusWasm();
+
         const { stream, maxWidth, maxHeight } = await getMaxResolutionStream();
         const track = stream.getVideoTracks()[0];
         video.srcObject = stream;
