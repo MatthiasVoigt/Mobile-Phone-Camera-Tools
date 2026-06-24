@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="icon" href="data:,">
+  <title>Settings · Image Capture (Optimized)</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --text: #f0f0f0;
+      --muted: #888;
+      --accent: #3b82f6;
+      --accent-pressed: #2563eb;
+      --border: #333;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      padding-top: var(--safe-top);
+      padding-bottom: calc(1rem + var(--safe-bottom));
+    }
+
+    .top-bar {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr auto;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 2.5rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #1e1e1e;
+      flex-shrink: 0;
+    }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      background: none;
+      border: none;
+      color: var(--text);
+      cursor: pointer;
+      border-radius: 8px;
+      touch-action: manipulation;
+      justify-self: start;
+    }
+
+    .back-btn:active { background: var(--surface); }
+
+    .top-confirm-btn,
+    .top-set-default-btn {
+      padding: 0.45rem 0.85rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      touch-action: manipulation;
+      white-space: nowrap;
+    }
+
+    .top-confirm-btn {
+      grid-column: 2;
+      justify-self: center;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+    }
+
+    .top-confirm-btn:active { background: var(--accent-pressed); }
+
+    .top-set-default-btn {
+      grid-column: 3;
+      justify-self: end;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .top-set-default-btn:active { background: #1f1f1f; }
+
+    main {
+      flex: 1;
+      padding: 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .setting-group {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .setting-group h2 {
+      padding: 0.85rem 1rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .option {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border-top: 1px solid #222;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .option:first-of-type { border-top: none; }
+
+    .option input {
+      width: 1.15rem;
+      height: 1.15rem;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .option span {
+      font-size: 1rem;
+    }
+
+    .sub-setting {
+      padding: 0.85rem 1rem 1rem;
+      border-top: 1px solid #222;
+    }
+
+    .sub-setting label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+
+    .sub-setting input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .text-input {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .text-input::placeholder {
+      color: var(--muted);
+    }
+
+    .sub-setting.hidden {
+      display: none;
+    }
+
+    .camera-status {
+      padding: 0.85rem 1rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      border-top: 1px solid #222;
+    }
+
+    .toggle-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border-top: 1px solid #222;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .toggle-option:first-of-type {
+      border-top: none;
+    }
+
+    .toggle-option > span:first-child {
+      font-size: 1rem;
+    }
+
+    .toggle-input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 2.75rem;
+      height: 1.6rem;
+      background: #333;
+      border-radius: 999px;
+      flex-shrink: 0;
+      transition: background 0.2s;
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 0.15rem;
+      left: 0.15rem;
+      width: 1.3rem;
+      height: 1.3rem;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+
+    .toggle-input:checked + .toggle-switch {
+      background: var(--accent);
+    }
+
+    .toggle-input:checked + .toggle-switch::after {
+      transform: translateX(1.15rem);
+    }
+
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <button class="back-btn" id="backBtn" type="button" aria-label="Back">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+    </button>
+    <button class="top-confirm-btn" id="topConfirmBtn" type="button">Confirm</button>
+    <button class="top-set-default-btn" id="setDefaultBtn" type="button">Reset Settings</button>
+  </div>
+
+  <main>
+    <div class="setting-group">
+      <h2>Image label</h2>
+      <div class="sub-setting" style="border-top: none;">
+        <input
+          type="text"
+          class="text-input"
+          id="imageLabel"
+          placeholder="e.g. Item_01"
+          maxlength="64"
+          autocomplete="off"
+          spellcheck="false"
+        >
+      </div>
+    </div>
+
+    <div class="setting-group" id="cameraSettings">
+      <h2>Camera</h2>
+      <div id="cameraOptions"></div>
+    </div>
+
+    <div class="setting-group">
+      <h2>Request Camera Image Resolution</h2>
+      <label class="option">
+        <input type="radio" name="imageResolution" value="max">
+        <span>Maximum</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageResolution" value="1920x1080">
+        <span>1920 × 1080</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageResolution" value="1280x720">
+        <span>1280 × 720</span>
+      </label>
+    </div>
+
+    <div class="setting-group">
+      <h2>Select Image Crop Size</h2>
+      <label class="option">
+        <input type="radio" name="cropSize" value="500">
+        <span>500 × 500</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="cropSize" value="800">
+        <span>800 × 800</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="cropSize" value="1000">
+        <span>1000 × 1000</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="cropSize" value="1500">
+        <span>1500 × 1500</span>
+      </label>
+    </div>
+
+    <div class="setting-group" id="magnificationSettings">
+      <h2>Image Magnification</h2>
+      <label class="option">
+        <input type="radio" name="imageMagnification" value="1">
+        <span>1×</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageMagnification" value="2">
+        <span>2×</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageMagnification" value="3">
+        <span>3×</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageMagnification" value="4">
+        <span>4×</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageMagnification" value="6">
+        <span>6×</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageMagnification" value="8">
+        <span>8×</span>
+      </label>
+    </div>
+
+    <div class="setting-group">
+      <h2>Image Quality Metrics</h2>
+      <label class="toggle-option" for="focusScoreToggle">
+        <span>Compute Focus Score</span>
+        <input type="checkbox" class="toggle-input" id="focusScoreToggle">
+        <span class="toggle-switch" aria-hidden="true"></span>
+      </label>
+      <label class="toggle-option" for="showHistogramToggle">
+        <span>Show Histogram</span>
+        <input type="checkbox" class="toggle-input" id="showHistogramToggle">
+        <span class="toggle-switch" aria-hidden="true"></span>
+      </label>
+    </div>
+
+    <div class="setting-group">
+      <h2>Image processing</h2>
+      <label class="option">
+        <input type="radio" name="imageProcessing" value="none">
+        <span>None (RGB)</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageProcessing" value="edgeMap">
+        <span>Edge map</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageProcessing" value="movingAverage">
+        <span>Moving average</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageProcessing" value="changeDetection">
+        <span>Change detection</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="imageProcessing" value="barcodeDetection">
+        <span>Barcode detection</span>
+      </label>
+      <div class="sub-setting hidden" id="blendRatioSetting">
+        <label for="movingAverageRatio">
+          <span>Current frame mix</span>
+          <span id="movingAverageRatioValue">0.5</span>
+        </label>
+        <input type="range" id="movingAverageRatio" min="0" max="100" step="1" value="50">
+      </div>
+    </div>
+
+    <div class="setting-group hidden" id="barcodeSettings">
+      <h2>Barcode decoder</h2>
+      <label class="option">
+        <input type="radio" name="barcodeDecoder" value="barcodeDetector">
+        <span>BarcodeDetector</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeDecoder" value="zxingHybrid">
+        <span>ZXing Bitmap (Hybrid)</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeDecoder" value="zxingGlobal">
+        <span>ZXing Bitmap (Global)</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeDecoder" value="zxingImage">
+        <span>ZXing Image</span>
+      </label>
+    </div>
+
+    <div class="setting-group hidden" id="barcodeFormatSettings">
+      <h2>Barcode code type</h2>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="data_matrix">
+        <span>Data Matrix</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="qr_code">
+        <span>QR Code</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="aztec">
+        <span>Aztec</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="pdf417">
+        <span>PDF417</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="ean_13">
+        <span>EAN-13</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="ean_8">
+        <span>EAN-8</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="code_128">
+        <span>Code 128</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="code_39">
+        <span>Code 39</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="code_93">
+        <span>Code 93</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="upc_a">
+        <span>UPC-A</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="upc_e">
+        <span>UPC-E</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="itf">
+        <span>ITF</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="barcodeFormat" value="codabar">
+        <span>Codabar</span>
+      </label>
+    </div>
+  </main>
+
+  <script src="settings.js"></script>
+  <script>
+    let settings = loadSettings();
+    const imageLabelInput = document.getElementById('imageLabel');
+    const focusScoreToggle = document.getElementById('focusScoreToggle');
+    const showHistogramToggle = document.getElementById('showHistogramToggle');
+    const ratioInput = document.getElementById('movingAverageRatio');
+    const ratioValue = document.getElementById('movingAverageRatioValue');
+    const blendRatioSetting = document.getElementById('blendRatioSetting');
+    const barcodeSettings = document.getElementById('barcodeSettings');
+    const barcodeFormatSettings = document.getElementById('barcodeFormatSettings');
+    const cameraOptions = document.getElementById('cameraOptions');
+    let availableCameraDeviceIds = [];
+
+    function createCameraOption(value, label, checked) {
+      const option = document.createElement('label');
+      option.className = 'option';
+
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'cameraSelection';
+      input.value = value;
+      input.checked = checked;
+
+      const text = document.createElement('span');
+      text.textContent = label;
+
+      option.appendChild(input);
+      option.appendChild(text);
+      return option;
+    }
+
+    function setCameraSelectionChecked(nextSettings) {
+      const selection = normalizeCameraSelection(
+        nextSettings.cameraSelection,
+        availableCameraDeviceIds
+      );
+
+      document.querySelectorAll('input[name="cameraSelection"]').forEach((input) => {
+        input.checked = input.value === selection;
+      });
+    }
+
+    function populateCameraOptions() {
+      const devices = loadCameraOptions();
+      availableCameraDeviceIds = devices.map((device) => device.deviceId);
+      const selection = normalizeCameraSelection(
+        settings.cameraSelection,
+        availableCameraDeviceIds
+      );
+
+      cameraOptions.textContent = '';
+
+      CAMERA_FACING_OPTIONS.forEach((facing) => {
+        cameraOptions.appendChild(createCameraOption(
+          facing,
+          CAMERA_FACING_LABELS[facing],
+          selection === facing
+        ));
+      });
+
+      devices.forEach((device) => {
+        const value = buildCameraDeviceSelectionId(device.deviceId);
+        cameraOptions.appendChild(createCameraOption(
+          value,
+          device.label,
+          selection === value
+        ));
+      });
+
+      if (devices.length === 0) {
+        const status = document.createElement('p');
+        status.className = 'camera-status';
+        status.textContent = 'Open settings from the capture page to list device cameras.';
+        cameraOptions.appendChild(status);
+      }
+    }
+
+    function applySettingsToForm(nextSettings) {
+      imageLabelInput.value = nextSettings.imageLabel || DEFAULT_IMAGE_LABEL;
+
+      document.querySelectorAll('input[name="imageResolution"]').forEach((input) => {
+        input.checked = input.value === nextSettings.imageResolution;
+      });
+
+      document.querySelectorAll('input[name="cropSize"]').forEach((input) => {
+        input.checked = Number(input.value) === nextSettings.cropSize;
+      });
+
+      const magnification = normalizeImageMagnification(nextSettings.imageMagnification);
+      document.querySelectorAll('input[name="imageMagnification"]').forEach((input) => {
+        input.checked = Number(input.value) === magnification;
+      });
+
+      focusScoreToggle.checked = Boolean(nextSettings.qualityMetrics?.focusScore);
+      showHistogramToggle.checked = Boolean(nextSettings.qualityMetrics?.showHistogram);
+
+      document.querySelectorAll('input[name="imageProcessing"]').forEach((input) => {
+        input.checked = input.value === nextSettings.imageProcessing;
+      });
+
+      ratioInput.value = movingAverageRatioToSlider(nextSettings.movingAverageRatio);
+      ratioValue.textContent = formatMovingAverageRatio(nextSettings.movingAverageRatio);
+
+      document.querySelectorAll('input[name="barcodeDecoder"]').forEach((input) => {
+        input.checked = input.value === nextSettings.barcodeDecoder;
+      });
+
+      document.querySelectorAll('input[name="barcodeFormat"]').forEach((input) => {
+        input.checked = input.value === nextSettings.barcodeFormat;
+      });
+
+      setCameraSelectionChecked(nextSettings);
+      updateProcessingSubSettings();
+    }
+
+    function updateProcessingSubSettings() {
+      const mode = document.querySelector('input[name="imageProcessing"]:checked')?.value;
+      const showRatio = mode === 'movingAverage' || mode === 'changeDetection';
+      const showBarcode = mode === 'barcodeDetection';
+      blendRatioSetting.classList.toggle('hidden', !showRatio);
+      barcodeSettings.classList.toggle('hidden', !showBarcode);
+      barcodeFormatSettings.classList.toggle('hidden', !showBarcode);
+    }
+
+    applySettingsToForm(settings);
+
+    document.querySelectorAll('input[name="imageProcessing"]').forEach((input) => {
+      input.addEventListener('change', updateProcessingSubSettings);
+    });
+
+    ratioInput.addEventListener('input', () => {
+      const ratio = sliderToMovingAverageRatio(Number(ratioInput.value));
+      ratioValue.textContent = formatMovingAverageRatio(ratio);
+    });
+
+    function goBack() {
+      window.location.href = 'image_capture.html';
+    }
+
+    function saveSettingsFromForm() {
+      const resolution = document.querySelector('input[name="imageResolution"]:checked');
+      const imageResolution = resolution ? resolution.value : DEFAULT_IMAGE_RESOLUTION;
+      const choice = document.querySelector('input[name="cropSize"]:checked');
+      const cropSize = choice ? Number(choice.value) : DEFAULT_CROP_SIZE;
+      const magnification = document.querySelector('input[name="imageMagnification"]:checked');
+      const imageMagnification = magnification
+        ? normalizeImageMagnification(Number(magnification.value))
+        : DEFAULT_IMAGE_MAGNIFICATION;
+      const processing = document.querySelector('input[name="imageProcessing"]:checked');
+      const imageProcessing = processing ? processing.value : 'none';
+      const movingAverageRatio = sliderToMovingAverageRatio(Number(ratioInput.value));
+      const decoder = document.querySelector('input[name="barcodeDecoder"]:checked');
+      const barcodeDecoder = decoder ? decoder.value : DEFAULT_BARCODE_DECODER;
+      const format = document.querySelector('input[name="barcodeFormat"]:checked');
+      const barcodeFormat = format ? format.value : DEFAULT_BARCODE_FORMAT;
+      const camera = document.querySelector('input[name="cameraSelection"]:checked');
+      const cameraSelection = camera
+        ? normalizeCameraSelection(camera.value, availableCameraDeviceIds)
+        : DEFAULT_CAMERA_SELECTION;
+      const imageLabel = imageLabelInput.value;
+      const labelChanged = imageLabel !== (settings.imageLabel ?? '');
+      const imageCounter = labelChanged ? DEFAULT_IMAGE_COUNTER : settings.imageCounter;
+      const qualityMetrics = {
+        focusScore: focusScoreToggle.checked,
+        showHistogram: showHistogramToggle.checked
+      };
+
+      saveSettings({
+        imageLabel,
+        imageCounter,
+        imageResolution,
+        cameraSelection,
+        imageMagnification,
+        cropSize,
+        qualityMetrics,
+        imageProcessing,
+        movingAverageRatio,
+        barcodeDecoder,
+        barcodeFormat
+      });
+    }
+
+    function confirmSettings() {
+      saveSettingsFromForm();
+      goBack();
+    }
+
+    function resetSettings() {
+      settings = getDefaultSettings();
+      saveSettings(settings);
+      goBack();
+    }
+
+    document.getElementById('backBtn').addEventListener('click', confirmSettings);
+    document.getElementById('topConfirmBtn').addEventListener('click', confirmSettings);
+    document.getElementById('setDefaultBtn').addEventListener('click', resetSettings);
+
+    populateCameraOptions();
+  </script>
+</body>
+</html>

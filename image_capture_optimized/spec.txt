@@ -1,0 +1,243 @@
+Image Capture — Optimized (image_capture_optimized)
+===================================================
+
+Purpose
+-------
+Speed-optimized variant of the Image Capture tool. Same features and UI layout as
+`image_capture/`, but tuned for higher preview frame rates on Android and faster PNG
+capture. Defaults to 1280×720 camera resolution instead of maximum resolution.
+
+Use this build when live preview responsiveness matters more than starting at the
+highest sensor resolution. Users can still select Maximum or 1920×1080 in settings.
+
+
+Relationship to image_capture/
+------------------------------
+Functional parity with the original tool:
+  - Wide 16:9 preview + square center crop
+  - Labeled PNG save with sequence counter and optional focus-score tag
+  - Settings for camera, resolution, crop size, magnification, processing modes,
+    quality metrics, barcode detection
+  - Separate storage keys (does not overwrite original app settings)
+
+Intentional differences documented in "Performance optimizations" below.
+
+
+Hard constraints (must follow when rebuilding)
+----------------------------------------------
+1. Same as image_capture/: no ES module script tags; plain `<script src>` + inline init.
+2. ZXing remains a dynamic import from esm.sh (network required for barcode ZXing modes).
+3. Use separate persistence keys:
+     localStorage:  image-capture-optimized-settings
+     sessionStorage: image-capture-optimized-camera-options
+4. Default imageResolution must be '1280x720', not 'max'.
+5. Save must encode from #saveCanvas (clean output), never from #zoomCanvas (overlays).
+6. Preview pixel processing runs at reduced resolution; save always uses full crop size.
+
+
+File inventory (7 files)
+------------------------
+HTML
+  image_capture.html    Optimized capture UI, throttled loops, fast save path
+  settings.html         Same settings UI as original (separate storage key)
+
+Shared JS
+  settings.js           Defaults + performance constants
+  image-processing.js   Half-res preview processing, full-res save processing
+  image-quality.js      Throttled metrics + OffscreenCanvas PNG encoding
+  barcode-detection.js  Downscaled scan input, longer detect interval
+
+Docs
+  spec.txt              This file
+
+
+Performance optimizations (vs image_capture/)
+-----------------------------------------------
+
+Default camera resolution
+  DEFAULT_IMAGE_RESOLUTION = '1280x720'
+  Reduces per-frame pixel count on Android for smoother preview. User can switch to
+  Maximum or 1920×1080 in settings (restarts camera on return).
+
+Center preview frame cap
+  MAX_CENTER_FPS = 30
+  Center crop updates at most 30 times per second. Uses video.requestVideoFrameCallback
+  when available; otherwise setTimeout fallback.
+
+Throttled quality metrics
+  METRICS_INTERVAL_MS = 250
+  Focus score and histogram computed at most ~4 Hz. Displayed values use the rolling
+  1 s focus average between updates.
+
+Half-resolution preview processing
+  PREVIEW_PROCESS_SCALE = 0.5, PREVIEW_PROCESS_MIN_SIZE = 256
+  edgeMap, movingAverage, changeDetection:
+    - Preview: draw crop → downscale to process canvas → getImageData at reduced size
+      → process → upscale to zoom canvas (imageSmoothingEnabled = false)
+    - Save: full cropSize × cropSize processing on #saveCanvas (no downscale)
+  Zoom label appends " · preview ½×" when a pixel-processing mode is active.
+
+Dedicated save path (major capture speedup)
+  Original re-ran full renderCenterView (metrics, overlays, preview processing) then
+  encoded zoomCanvas.
+
+  Optimized savePng():
+    1. Single video → cropCanvas draw at full crop size
+    2. renderSaveFrame() → #saveCanvas (full-res processed or raw RGB)
+    3. Focus filename tag from cached getSmoothedFocusScore() — no recomputation
+    4. canvasToPngBlob(saveCanvas) — prefers OffscreenCanvas.convertToBlob
+    5. Fallback download uses URL.createObjectURL(blob), not toDataURL (avoids main-thread
+       base64 encoding of large PNGs)
+
+  Barcode overlay is preview-only; saved PNG is raw crop (no detection graphics).
+
+Canvas context tuning
+  wideCtx / zoomCtx: { alpha: false, desynchronized: true }
+  cropCtx / saveCtx / previewProcessCtx: willReadFrequently: true
+
+Wide view overlay cadence
+  WIDE_OVERLAY_INTERVAL_MS = 2
+  Dashed center-crop rectangle redrawn every 2 wide frames (video still every frame).
+
+Barcode detection
+  BARCODE_DETECT_INTERVAL_MS = 800 (was 600)
+  BARCODE_DETECT_MAX_EDGE = 640 — downscale source before detect; scale box back
+
+Cached center crop
+  Wide loop stores cachedCenterCrop; center loop reuses it to avoid duplicate math.
+
+
+Settings schema (settings.js)
+-----------------------------
+Same fields as image_capture/ with these key/default changes:
+
+  SETTINGS_KEY = 'image-capture-optimized-settings'
+  CAMERA_OPTIONS_KEY = 'image-capture-optimized-camera-options'
+  DEFAULT_IMAGE_RESOLUTION = '1280x720'
+
+Additional constants (not user-editable):
+  MAX_CENTER_FPS = 30
+  METRICS_INTERVAL_MS = 250
+  PREVIEW_PROCESS_SCALE = 0.5
+  PREVIEW_PROCESS_MIN_SIZE = 256
+  BARCODE_DETECT_INTERVAL_MS = 800
+  BARCODE_DETECT_MAX_EDGE = 640
+  WIDE_OVERLAY_INTERVAL_MS = 2
+
+All other defaults match image_capture/ (crop 800, magnification 2×, focus score on).
+
+
+Page: image_capture.html
+------------------------
+Same DOM structure as image_capture/ plus hidden canvases:
+  #saveCanvas            Full-res output buffer for PNG encode
+  #previewProcessCanvas  Half-res buffer for preview processing
+
+Script load order:
+  settings.js → image-quality.js → image-processing.js → barcode-detection.js → inline
+
+Stats line shows requested resolution preset and preview FPS cap:
+  "Resolution: W × H · 1280 × 720"
+  "Magnification: 2× · Preview capped 30 FPS"
+
+
+Render loops (optimized)
+------------------------
+Wide loop: unchanged rAF cadence; overlay every 2 frames; updates cachedCenterCrop.
+
+Center loop:
+  scheduleNextCenterFrame() → queueCenterFrame(now)
+  Skip if centerInFlight or elapsed < CENTER_FRAME_MIN_MS
+  renderCenterView with throttled metrics and half-res preview processing
+
+startRenderLoops resets wideFrameCounter, lastCenterFrameMs, lastMetricsUpdateMs.
+
+
+Save flow
+---------
+savePng():
+  video → cropCanvas (full crop)
+  renderSaveFrame():
+    none / barcode: video → saveCanvas
+    edgeMap / movingAverage / changeDetection:
+      cropCanvas → renderProcessedSave() at full squareSize
+  focus tag from getSmoothedFocusScore() if enabled
+  blob = await canvasToPngBlob(saveCanvas)
+  showSaveFilePicker or object-URL download
+
+
+Module: image-processing.js
+---------------------------
+New helpers vs original:
+  needsPixelProcessing(settings)
+  renderProcessedPreview(source, previewCanvas, previewCtx, displayCanvas, displayCtx,
+                        settings, squareSize)
+  renderProcessedSave(sourceCanvas, saveCanvas, saveCtx, settings, squareSize)
+  getPreviewProcessSize(squareSize) — in settings.js
+
+
+Module: image-quality.js
+------------------------
+New helpers vs original:
+  shouldUpdateMetrics(now, lastUpdateMs)
+  canvasToPngBlob(canvas) — OffscreenCanvas.convertToBlob with toBlob fallback
+
+
+Module: barcode-detection.js
+----------------------------
+  getDetectionSize() — cap longest edge at BARCODE_DETECT_MAX_EDGE
+  scaleBarcodeBox() — map detection coordinates back to full crop space
+  Uses BARCODE_DETECT_INTERVAL_MS from settings.js
+
+
+Page: settings.html
+-------------------
+Identical options to image_capture/settings.html.
+Title: "Settings · Image Capture (Optimized)"
+Uses image-capture-optimized-settings via settings.js.
+
+
+Parent integration
+------------------
+Listed on repo root index.html as "Image Capture (Optimized)" linking to
+image_capture_optimized/image_capture.html.
+
+Back button: ../index.html
+
+
+Global API summary (additions vs image_capture/)
+-------------------------------------------------
+settings.js:
+  getPreviewProcessSize, MAX_CENTER_FPS, METRICS_INTERVAL_MS, PREVIEW_PROCESS_*,
+  BARCODE_DETECT_INTERVAL_MS, BARCODE_DETECT_MAX_EDGE, WIDE_OVERLAY_INTERVAL_MS
+
+image-processing.js:
+  needsPixelProcessing, renderProcessedPreview, renderProcessedSave
+
+image-quality.js:
+  shouldUpdateMetrics, canvasToPngBlob
+
+
+Rebuild checklist
+-----------------
+1. Copy image_capture/ structure into image_capture_optimized/.
+2. Apply settings.js changes (new keys, 1280×720 default, perf constants).
+3. Add preview/save processing helpers in image-processing.js.
+4. Add shouldUpdateMetrics + canvasToPngBlob in image-quality.js.
+5. Add downscaled barcode detect in barcode-detection.js.
+6. Wire optimized loops and save path in image_capture.html:
+   - #saveCanvas, #previewProcessCanvas
+   - 30 FPS center cap, 250 ms metrics throttle
+   - Half-res preview, full-res save
+7. Update settings.html title; keep separate storage key.
+8. Add index.html link; write this spec.txt.
+9. Verify on Android: smoother preview at 720p default; faster save vs original;
+   saved PNG is full crop resolution with correct processing when mode enabled.
+
+
+Operational notes
+-----------------
+- First launch uses 1280×720 — change to Maximum in settings for full sensor res.
+- Preview processing modes look softer/blockier than save output (half-res preview).
+- Focus score in filename reflects the rolling average, not a one-off recomputation.
+- Original image_capture/ settings are independent (different localStorage key).

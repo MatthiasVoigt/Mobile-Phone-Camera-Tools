@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="icon" href="data:,">
+  <title>Item_01</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --text: #f0f0f0;
+      --muted: #888;
+      --accent: #3b82f6;
+      --accent-pressed: #2563eb;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      padding-bottom: calc(1rem + var(--safe-bottom));
+    }
+
+    .top-bar {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 0.35rem;
+      min-height: 2.5rem;
+    }
+
+    .overlay-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 2.5rem;
+      height: 2.5rem;
+      background: rgba(0, 0, 0, 0.35);
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      border-radius: 8px;
+      touch-action: manipulation;
+      pointer-events: auto;
+    }
+
+    .overlay-btn:active { background: rgba(0, 0, 0, 0.55); }
+
+    h1 {
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    }
+
+    .page-title-row {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      min-width: 0;
+      pointer-events: none;
+    }
+
+    .page-title-group {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .label-prefix-text {
+      flex-shrink: 0;
+      display: inline-block;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.2;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    }
+
+    #pageTitle {
+      pointer-events: auto;
+      cursor: pointer;
+      padding: 0.2rem 0.35rem;
+      border-radius: 8px;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+      font-size: 1.05rem;
+    }
+
+    #pageTitle:active {
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .label-increment-btn {
+      pointer-events: auto;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.45rem;
+      height: 1.45rem;
+      padding: 0;
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .label-increment-btn:active {
+      background: rgba(0, 0, 0, 0.55);
+    }
+
+    .label-increment-btn.hidden {
+      display: none;
+    }
+
+    .page-title-input {
+      pointer-events: auto;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-align: center;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 8px;
+      padding: 0.2rem 0.35rem;
+      min-width: 0;
+      max-width: 100%;
+      width: min(10rem, 42vw);
+      outline: none;
+      text-shadow: none;
+    }
+
+    .page-title-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .stats {
+      margin-top: 0.35rem;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.75);
+      line-height: 1.4;
+      text-align: left;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    .stats span {
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 0 0 0.75rem;
+    }
+
+    .wide-section {
+      flex-shrink: 0;
+    }
+
+    .wide-view {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: var(--surface);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .wide-view canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .wide-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .wide-overlay-top {
+      padding: calc(0.75rem + var(--safe-top)) 1rem 1.25rem;
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.72) 0%,
+        rgba(0, 0, 0, 0.35) 55%,
+        transparent 100%
+      );
+    }
+
+    .wide-overlay-bottom {
+      padding: 1rem 0.75rem 0.65rem;
+      background: linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.55) 0%,
+        transparent 100%
+      );
+    }
+
+    .wide-overlay-bottom .zoom-label {
+      color: rgba(255, 255, 255, 0.8);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    .zoom-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 0.75rem;
+    }
+
+    .zoom-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .zoom-view {
+      width: 100%;
+      max-width: min(100vw - 1.5rem, var(--crop-max, 800px));
+      aspect-ratio: 1 / 1;
+      background: var(--surface);
+      border: 1px solid #222;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .zoom-view canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1 / 1;
+    }
+
+    .metrics-region-overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .zoom-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .zoom-overlay-top {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      padding: 0.65rem 0.85rem 1.5rem;
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.72) 0%,
+        rgba(0, 0, 0, 0.35) 55%,
+        transparent 100%
+      );
+    }
+
+    .zoom-overlay-top .zoom-label,
+    .quality-metric {
+      color: rgba(255, 255, 255, 0.8);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    .quality-metric {
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .zoom-overlay-bottom {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: calc(4rem + 2.5rem);
+      padding: 1.5rem 0.85rem 1rem;
+      background: linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.55) 0%,
+        transparent 100%
+      );
+    }
+
+    .saved-filename-field {
+      position: absolute;
+      right: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: auto;
+      min-width: 0;
+      width: min(12rem, 40vw);
+      max-width: calc(100% - 5.5rem);
+      padding: 0.4rem 0.55rem;
+      font-size: 0.75rem;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .saved-filename-field.hidden {
+      display: none;
+    }
+
+    .histogram-overlay {
+      position: absolute;
+      left: 0.65rem;
+      bottom: 0.65rem;
+      pointer-events: none;
+      z-index: 3;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .histogram-overlay canvas {
+      display: block;
+      width: 140px;
+      height: 90px;
+    }
+
+    .capture-btn {
+      width: 4rem;
+      height: 4rem;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.9);
+      background: #ef4444;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      touch-action: manipulation;
+      pointer-events: auto;
+      flex-shrink: 0;
+      padding: 0;
+    }
+
+    .capture-btn:active:not(:disabled) {
+      background: #dc2626;
+      transform: scale(0.96);
+    }
+
+    .capture-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .error {
+      margin: 1rem;
+      padding: 1rem;
+      background: #2a1010;
+      border: 1px solid #5c2020;
+      border-radius: 8px;
+      color: #f88;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .error.visible { display: block; }
+
+    #video {
+      position: fixed;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <p class="error" id="error"></p>
+
+  <main>
+    <section class="wide-section" aria-label="Wide view">
+      <div class="wide-view">
+        <canvas id="wideCanvas"></canvas>
+        <div class="wide-overlay">
+          <div class="wide-overlay-top">
+            <div class="top-bar">
+              <button class="overlay-btn back-btn" id="backBtn" type="button" aria-label="Back to tools">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M15 18l-6-6 6-6"/>
+                </svg>
+              </button>
+              <button class="overlay-btn menu-btn" id="menuBtn" type="button" aria-label="Settings">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <line x1="4" y1="7" x2="20" y2="7"/>
+                  <line x1="4" y1="12" x2="20" y2="12"/>
+                  <line x1="4" y1="17" x2="20" y2="17"/>
+                </svg>
+              </button>
+              <div class="page-title-row">
+                <span class="label-prefix-text">Label:</span>
+                <div class="page-title-group">
+                  <h1 id="pageTitle" title="Tap to edit image label">Item_01</h1>
+                  <button
+                    class="label-increment-btn hidden"
+                    id="labelIncrementBtn"
+                    type="button"
+                    aria-label="Increment label number"
+                  >+</button>
+                </div>
+              </div>
+              <button class="overlay-btn fullscreen-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen">
+                <svg class="fullscreen-enter-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M8 3H3v5M16 3h5v5M16 21h5v-5M8 21H3v-5"/>
+                </svg>
+                <svg class="fullscreen-exit-icon hidden" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M8 3v3H3M16 3v3h5M16 21v-3h5M8 21v-3H3"/>
+                </svg>
+              </button>
+            </div>
+            <p class="stats" id="stats">Starting camera…</p>
+          </div>
+          <div class="wide-overlay-bottom">
+            <span class="zoom-label" id="maxResolutionLabel">Max resolution · …</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="zoom-section" aria-label="Center zoom">
+      <div class="zoom-view">
+        <canvas id="zoomCanvas" width="800" height="800"></canvas>
+        <canvas id="metricsRegionCanvas" class="metrics-region-overlay hidden"></canvas>
+        <div class="zoom-overlay">
+          <div class="zoom-overlay-top">
+            <span class="quality-metric hidden" id="focusScoreLabel">Focus score · 0.0</span>
+            <span class="zoom-label" id="zoomLabel">Center crop · 800 × 800</span>
+            <span class="quality-metric hidden" id="maxPixelCountLabel">Max Pixel Count · 0</span>
+          </div>
+          <div class="zoom-overlay-bottom">
+            <button class="capture-btn" id="captureBtn" type="button" aria-label="Save PNG" disabled></button>
+            <input
+              type="text"
+              class="saved-filename-field hidden"
+              id="savedFilenameField"
+              readonly
+              aria-live="polite"
+              aria-label="Saved filename"
+            >
+          </div>
+        </div>
+        <div class="histogram-overlay hidden" id="histogramOverlay">
+          <canvas id="histogramCanvas" width="140" height="90"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <video id="video" playsinline autoplay muted></video>
+  <canvas id="cropCanvas" hidden></canvas>
+  <canvas id="saveCanvas" hidden></canvas>
+  <canvas id="previewProcessCanvas" hidden></canvas>
+
+  <script src="settings.js"></script>
+  <script src="image-quality.js"></script>
+  <script src="image-processing.js"></script>
+  <script src="barcode-detection.js"></script>
+  <script>
+    const WIDE_ASPECT = 16 / 9;
+    const CENTER_FRAME_MIN_MS = 1000 / MAX_CENTER_FPS;
+
+    const video = document.getElementById('video');
+    const wideCanvas = document.getElementById('wideCanvas');
+    const zoomCanvas = document.getElementById('zoomCanvas');
+    const wideCtx = wideCanvas.getContext('2d', { alpha: false, desynchronized: true });
+    const zoomCtx = zoomCanvas.getContext('2d', { alpha: false, desynchronized: true });
+    const statsEl = document.getElementById('stats');
+    const errorEl = document.getElementById('error');
+    const captureBtn = document.getElementById('captureBtn');
+    const savedFilenameField = document.getElementById('savedFilenameField');
+    const backBtn = document.getElementById('backBtn');
+    const menuBtn = document.getElementById('menuBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const fullscreenEnterIcon = fullscreenBtn.querySelector('.fullscreen-enter-icon');
+    const fullscreenExitIcon = fullscreenBtn.querySelector('.fullscreen-exit-icon');
+    const pageTitle = document.getElementById('pageTitle');
+    const labelIncrementBtn = document.getElementById('labelIncrementBtn');
+    const maxResolutionLabel = document.getElementById('maxResolutionLabel');
+    const zoomLabel = document.getElementById('zoomLabel');
+    const focusScoreLabel = document.getElementById('focusScoreLabel');
+    const maxPixelCountLabel = document.getElementById('maxPixelCountLabel');
+    const histogramOverlay = document.getElementById('histogramOverlay');
+    const histogramCanvas = document.getElementById('histogramCanvas');
+    const histogramCtx = histogramCanvas.getContext('2d');
+    const metricsRegionCanvas = document.getElementById('metricsRegionCanvas');
+    const metricsRegionCtx = metricsRegionCanvas.getContext('2d');
+    const zoomView = document.querySelector('.zoom-view');
+
+    const cropCanvas = document.getElementById('cropCanvas');
+    const cropCtx = cropCanvas.getContext('2d', { willReadFrequently: true });
+    const saveCanvas = document.getElementById('saveCanvas');
+    const saveCtx = saveCanvas.getContext('2d', { willReadFrequently: true });
+    const previewProcessCanvas = document.getElementById('previewProcessCanvas');
+    const previewProcessCtx = previewProcessCanvas.getContext('2d', { willReadFrequently: true });
+
+    let wideAnimationId = null;
+    let centerLoopActive = false;
+    let centerInFlight = false;
+    let appSettings = loadSettings();
+
+    let lastProcessingKey = '';
+    let savedFilenameTimeout = null;
+    let saveInProgress = false;
+    let lastCenterFrameMs = 0;
+    let lastMetricsUpdateMs = 0;
+    let wideFrameCounter = 0;
+    let lastWideDisplayW = 0;
+    let lastWideDisplayH = 0;
+    let cachedCenterCrop = null;
+    let cachedMetricsSample = null;
+
+    function showSavedFilename(filename) {
+      if (savedFilenameTimeout) {
+        clearTimeout(savedFilenameTimeout);
+        savedFilenameTimeout = null;
+      }
+
+      savedFilenameField.value = filename;
+      savedFilenameField.classList.remove('hidden');
+
+      savedFilenameTimeout = setTimeout(() => {
+        savedFilenameField.classList.add('hidden');
+        savedFilenameField.value = '';
+        savedFilenameTimeout = null;
+      }, 5000);
+    }
+
+    function updatePageTitle() {
+      const label = String(appSettings.imageLabel ?? '').trim();
+      const title = label || DEFAULT_IMAGE_LABEL;
+      pageTitle.textContent = title;
+      document.title = title;
+      labelIncrementBtn.classList.toggle('hidden', !labelEndsWithNumber(label));
+    }
+
+    function incrementPageLabelNumber() {
+      const previousLabel = String(appSettings.imageLabel ?? '').trim();
+      const nextLabel = incrementLabelTrailingNumber(previousLabel);
+      if (nextLabel === previousLabel) return;
+
+      appSettings.imageLabel = nextLabel;
+      appSettings.imageCounter = DEFAULT_IMAGE_COUNTER;
+      saveSettings(appSettings);
+      updatePageTitle();
+    }
+
+    function commitPageTitleEdit(input, restorePrevious) {
+      if (input.dataset.finished === 'true') return;
+      input.dataset.finished = 'true';
+
+      if (!restorePrevious) {
+        const previousLabel = appSettings.imageLabel ?? '';
+        const newLabel = input.value;
+        const labelChanged = newLabel !== previousLabel;
+
+        appSettings.imageLabel = newLabel;
+        if (labelChanged) {
+          appSettings.imageCounter = DEFAULT_IMAGE_COUNTER;
+        }
+        saveSettings(appSettings);
+      }
+
+      input.replaceWith(pageTitle);
+      updatePageTitle();
+    }
+
+    function startPageTitleEdit() {
+      if (!pageTitle.isConnected || pageTitle.parentElement?.querySelector('.page-title-input')) {
+        return;
+      }
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'page-title-input';
+      input.value = appSettings.imageLabel ?? '';
+      input.placeholder = DEFAULT_IMAGE_LABEL;
+      input.maxLength = 64;
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      input.setAttribute('aria-label', 'Image label');
+
+      labelIncrementBtn.classList.add('hidden');
+      pageTitle.replaceWith(input);
+      input.focus();
+      input.select();
+
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          commitPageTitleEdit(input, false);
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          commitPageTitleEdit(input, true);
+        }
+      });
+
+      input.addEventListener('blur', () => {
+        commitPageTitleEdit(input, false);
+      });
+    }
+
+    function updateZoomLabel(size) {
+      const modeLabel = getProcessingLabel(appSettings);
+      const mode = modeLabel ? ` · ${modeLabel}` : '';
+      const previewNote = needsPixelProcessing(appSettings) ? ' · preview ½×' : '';
+      zoomLabel.textContent = `Center crop · ${size} × ${size}${mode}${previewNote}`;
+    }
+
+    function syncProcessingState() {
+      const key = [
+        appSettings.imageProcessing,
+        appSettings.movingAverageRatio,
+        appSettings.cropSize,
+        appSettings.barcodeDecoder,
+        appSettings.barcodeFormat
+      ].join(':');
+
+      if (key !== lastProcessingKey) {
+        resetMovingAverage();
+        resetBarcodeDetection();
+        lastProcessingKey = key;
+      }
+    }
+
+    function applyCropSize(size) {
+      appSettings.cropSize = size;
+      updateZoomLabel(size);
+      zoomView.style.setProperty('--crop-max', `${size}px`);
+    }
+
+    function ensureCenterCanvases(squareSize) {
+      if (cropCanvas.width !== squareSize || cropCanvas.height !== squareSize) {
+        cropCanvas.width = squareSize;
+        cropCanvas.height = squareSize;
+      }
+      if (zoomCanvas.width !== squareSize || zoomCanvas.height !== squareSize) {
+        zoomCanvas.width = squareSize;
+        zoomCanvas.height = squareSize;
+        updateZoomLabel(squareSize);
+      }
+    }
+
+    function qualityMetricsActive() {
+      return Boolean(
+        appSettings.qualityMetrics?.focusScore ||
+        appSettings.qualityMetrics?.showHistogram
+      );
+    }
+
+    function updateMetricsRegionOverlay(squareSize) {
+      if (!qualityMetricsActive()) {
+        metricsRegionCanvas.classList.add('hidden');
+        return;
+      }
+
+      if (metricsRegionCanvas.width !== squareSize || metricsRegionCanvas.height !== squareSize) {
+        metricsRegionCanvas.width = squareSize;
+        metricsRegionCanvas.height = squareSize;
+      }
+
+      drawMetricsRegionOverlay(metricsRegionCtx, squareSize);
+      metricsRegionCanvas.classList.remove('hidden');
+    }
+
+    function updateQualityMetricsOverlay() {
+      if (!appSettings.qualityMetrics?.focusScore) {
+        resetFocusScoreHistory();
+        focusScoreLabel.classList.add('hidden');
+      }
+      if (!appSettings.qualityMetrics?.showHistogram) {
+        histogramOverlay.classList.add('hidden');
+        maxPixelCountLabel.classList.add('hidden');
+      }
+      if (!qualityMetricsActive()) {
+        metricsRegionCanvas.classList.add('hidden');
+      }
+    }
+
+    function updateFocusScore(cropped) {
+      if (!appSettings.qualityMetrics?.focusScore) {
+        resetFocusScoreHistory();
+        focusScoreLabel.classList.add('hidden');
+        return;
+      }
+
+      recordFocusScore(computeFocusScore(cropped));
+      focusScoreLabel.textContent = formatFocusScore(getSmoothedFocusScore());
+      focusScoreLabel.classList.remove('hidden');
+    }
+
+    function updateHistogram(cropped) {
+      if (!appSettings.qualityMetrics?.showHistogram) {
+        histogramOverlay.classList.add('hidden');
+        maxPixelCountLabel.classList.add('hidden');
+        return;
+      }
+
+      const bins = computeGrayscaleHistogram(cropped);
+      const topBrightness = topBrightnessFromHistogram(bins, BRIGHTNESS_TOP_RANK);
+      drawHistogram(
+        histogramCtx,
+        bins,
+        histogramCanvas.width,
+        histogramCanvas.height
+      );
+      maxPixelCountLabel.textContent = formatMaxPixelCount(topBrightness);
+      maxPixelCountLabel.classList.remove('hidden');
+      histogramOverlay.classList.remove('hidden');
+    }
+
+    function updateQualityMetrics(metricsSample) {
+      if (!metricsSample) {
+        updateQualityMetricsOverlay();
+        return;
+      }
+
+      updateFocusScore(metricsSample);
+      updateHistogram(metricsSample);
+    }
+
+    function sampleQualityMetrics(cropCanvas) {
+      if (!qualityMetricsActive()) {
+        return null;
+      }
+
+      return sampleCenterRegionFromCanvas(cropCanvas);
+    }
+
+    function applyStoredSettings() {
+      const previousResolution = appSettings.imageResolution;
+      const previousMagnification = Number(appSettings.imageMagnification);
+      const previousCamera = appSettings.cameraSelection;
+      appSettings = loadSettings();
+      appSettings.imageMagnification = normalizeImageMagnification(appSettings.imageMagnification);
+      appSettings.cameraSelection = normalizeCameraSelection(appSettings.cameraSelection);
+      updatePageTitle();
+      applyCropSize(appSettings.cropSize);
+      syncProcessingState();
+      updateQualityMetricsOverlay();
+      updateStats();
+      return {
+        resolutionChanged: previousResolution !== appSettings.imageResolution,
+        magnificationChanged: previousMagnification !== appSettings.imageMagnification,
+        cameraChanged: previousCamera !== appSettings.cameraSelection
+      };
+    }
+
+    async function applyZoomToActiveTrack() {
+      const track = video.srcObject?.getVideoTracks?.()[0];
+      if (!track) return;
+
+      try {
+        await applyZoom(track);
+        updateStats();
+      } catch (err) {
+        console.error('Failed to apply magnification:', err);
+      }
+    }
+
+    async function restartCamera() {
+      stopRenderLoops();
+      video.srcObject?.getTracks?.().forEach((t) => t.stop());
+      captureBtn.disabled = true;
+      await init();
+    }
+
+    async function storeCameraOptionsForSettings() {
+      if (!video.srcObject) {
+        return;
+      }
+
+      try {
+        await refreshAndStoreCameraOptions();
+      } catch (err) {
+        console.error('Failed to enumerate cameras:', err);
+      }
+    }
+
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.classList.add('visible');
+      statsEl.textContent = 'Camera unavailable';
+    }
+
+    function updateMaxResolutionLabel(maxWidth, maxHeight) {
+      if (maxWidth && maxHeight) {
+        maxResolutionLabel.textContent = `Max resolution · ${maxWidth} × ${maxHeight}`;
+        return;
+      }
+
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      maxResolutionLabel.textContent = w && h
+        ? `Max resolution · ${w} × ${h}`
+        : 'Max resolution · unavailable';
+    }
+
+    async function openCameraStream(videoConstraints) {
+      return navigator.mediaDevices.getUserMedia({
+        video: videoConstraints,
+        audio: false
+      });
+    }
+
+    async function getMaxResolutionStream() {
+      const cameraSelection = normalizeCameraSelection(appSettings.cameraSelection);
+      const temp = await openCameraStream(buildVideoConstraintsForCamera(cameraSelection));
+      const track = temp.getVideoTracks()[0];
+      const caps = track.getCapabilities?.() ?? {};
+
+      temp.getTracks().forEach((t) => t.stop());
+
+      const maxWidth = caps.width?.max ?? null;
+      const maxHeight = caps.height?.max ?? null;
+      const requested = getRequestedResolution(appSettings.imageResolution, maxWidth, maxHeight);
+      const magnification = normalizeImageMagnification(appSettings.imageMagnification);
+
+      const attempts = [
+        buildVideoConstraintsForCamera(cameraSelection, {
+          width: { ideal: requested.width },
+          height: { ideal: requested.height },
+          zoom: magnification
+        }),
+        buildVideoConstraintsForCamera(cameraSelection, {
+          width: { ideal: requested.width },
+          height: { ideal: requested.height },
+          advanced: [{ zoom: magnification }]
+        }),
+        buildVideoConstraintsForCamera(cameraSelection)
+      ];
+
+      for (const videoConstraints of attempts) {
+        try {
+          const stream = await openCameraStream(videoConstraints);
+          return { stream, maxWidth, maxHeight };
+        } catch {
+          // Try the next constraint format supported by this browser.
+        }
+      }
+
+      throw new Error('Could not open the selected camera.');
+    }
+
+    async function applyZoom(track) {
+      const capabilities = track.getCapabilities?.() ?? {};
+      const requested = normalizeImageMagnification(appSettings.imageMagnification);
+      appSettings.imageMagnification = requested;
+
+      if (!capabilities.zoom) {
+        return false;
+      }
+
+      const attempts = [
+        { zoom: requested },
+        { advanced: [{ zoom: requested }] }
+      ];
+
+      for (const constraints of attempts) {
+        try {
+          await track.applyConstraints(constraints);
+          return true;
+        } catch {
+          // Try the next constraint format supported by this browser.
+        }
+      }
+
+      return false;
+    }
+
+    function updateStats() {
+      const magnification = normalizeImageMagnification(appSettings.imageMagnification);
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+
+      if (!w || !h) {
+        statsEl.innerHTML = `Magnification: <span>${magnification}×</span>`;
+        return;
+      }
+
+      const resolutionLabel = getImageResolutionLabel(appSettings.imageResolution);
+      statsEl.innerHTML =
+        `Resolution: <span>${w} × ${h}</span> · <span>${resolutionLabel}</span><br>` +
+        `Magnification: <span>${magnification}×</span> · Preview capped <span>${MAX_CENTER_FPS} FPS</span>`;
+    }
+
+    function getWideCropRegion(vw, vh) {
+      let cropW = vw;
+      let cropH = vw / WIDE_ASPECT;
+      if (cropH > vh) {
+        cropH = vh;
+        cropW = vh * WIDE_ASPECT;
+      }
+      return {
+        srcX: (vw - cropW) / 2,
+        srcY: (vh - cropH) / 2,
+        cropW,
+        cropH
+      };
+    }
+
+    function getCenterCropRegion(vw, vh, size) {
+      const squareSize = Math.min(size, vw, vh);
+      return {
+        sqX: (vw - squareSize) / 2,
+        sqY: (vh - squareSize) / 2,
+        squareSize
+      };
+    }
+
+    function drawCropOverlay(ctx, centerCrop, wideCrop, displayW, displayH) {
+      const { sqX, sqY, squareSize } = centerCrop;
+      const { srcX, srcY, cropW, cropH } = wideCrop;
+
+      const rectX = ((sqX - srcX) / cropW) * displayW;
+      const rectY = ((sqY - srcY) / cropH) * displayH;
+      const rectW = (squareSize / cropW) * displayW;
+      const rectH = (squareSize / cropH) * displayH;
+
+      ctx.save();
+      ctx.setLineDash([8, 5]);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.strokeRect(rectX + 1, rectY + 1, rectW, rectH);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.strokeRect(rectX, rectY, rectW, rectH);
+      ctx.restore();
+    }
+
+    function drawWideFrame() {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh) {
+        wideAnimationId = requestAnimationFrame(drawWideFrame);
+        return;
+      }
+
+      const container = wideCanvas.parentElement;
+      const displayW = container.clientWidth;
+      const displayH = container.clientHeight;
+      if (wideCanvas.width !== displayW || wideCanvas.height !== displayH) {
+        wideCanvas.width = displayW;
+        wideCanvas.height = displayH;
+        lastWideDisplayW = displayW;
+        lastWideDisplayH = displayH;
+      }
+
+      const wideCrop = getWideCropRegion(vw, vh);
+      const centerCrop = getCenterCropRegion(vw, vh, appSettings.cropSize);
+      cachedCenterCrop = centerCrop;
+
+      wideCtx.drawImage(
+        video,
+        wideCrop.srcX, wideCrop.srcY, wideCrop.cropW, wideCrop.cropH,
+        0, 0, displayW, displayH
+      );
+
+      wideFrameCounter += 1;
+      if (wideFrameCounter % WIDE_OVERLAY_INTERVAL_MS === 0) {
+        drawCropOverlay(wideCtx, centerCrop, wideCrop, displayW, displayH);
+      }
+
+      wideAnimationId = requestAnimationFrame(drawWideFrame);
+    }
+
+    function startRenderLoops() {
+      stopRenderLoops();
+      centerLoopActive = true;
+      wideFrameCounter = 0;
+      lastCenterFrameMs = 0;
+      lastMetricsUpdateMs = 0;
+      wideAnimationId = requestAnimationFrame(drawWideFrame);
+      scheduleNextCenterFrame();
+    }
+
+    function stopRenderLoops() {
+      centerLoopActive = false;
+      centerInFlight = false;
+      if (wideAnimationId) {
+        cancelAnimationFrame(wideAnimationId);
+        wideAnimationId = null;
+      }
+    }
+
+    function scheduleNextCenterFrame() {
+      if (!centerLoopActive) return;
+
+      if (typeof video.requestVideoFrameCallback === 'function') {
+        video.requestVideoFrameCallback(() => queueCenterFrame(performance.now()));
+      } else {
+        setTimeout(() => queueCenterFrame(performance.now()), CENTER_FRAME_MIN_MS);
+      }
+    }
+
+    function queueCenterFrame(now = performance.now()) {
+      if (!centerLoopActive || centerInFlight) {
+        if (centerLoopActive) scheduleNextCenterFrame();
+        return;
+      }
+
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh) {
+        scheduleNextCenterFrame();
+        return;
+      }
+
+      if (now - lastCenterFrameMs < CENTER_FRAME_MIN_MS) {
+        scheduleNextCenterFrame();
+        return;
+      }
+
+      centerInFlight = true;
+      lastCenterFrameMs = now;
+      const centerCrop = cachedCenterCrop || getCenterCropRegion(vw, vh, appSettings.cropSize);
+
+      setTimeout(() => {
+        if (!centerLoopActive) {
+          centerInFlight = false;
+          return;
+        }
+
+        try {
+          renderCenterView(video, centerCrop);
+        } catch (err) {
+          console.error('Center view render failed:', err);
+        } finally {
+          centerInFlight = false;
+          scheduleNextCenterFrame();
+        }
+      }, 0);
+    }
+
+    function renderCenterView(source, centerCrop) {
+      const { sqX, sqY, squareSize } = centerCrop;
+
+      ensureCenterCanvases(squareSize);
+
+      cropCtx.drawImage(
+        source,
+        sqX, sqY, squareSize, squareSize,
+        0, 0, squareSize, squareSize
+      );
+
+      const now = performance.now();
+      const metricsDue = qualityMetricsActive() && shouldUpdateMetrics(now, lastMetricsUpdateMs);
+      if (metricsDue) {
+        cachedMetricsSample = sampleQualityMetrics(cropCanvas);
+        lastMetricsUpdateMs = now;
+      }
+
+      if (appSettings.imageProcessing === 'barcodeDetection') {
+        zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
+        scheduleBarcodeDetection(cropCanvas, appSettings);
+        drawBarcodeOverlay(zoomCtx, getLastBarcodeResult(), squareSize);
+        if (metricsDue) {
+          updateQualityMetrics(cachedMetricsSample);
+        }
+        updateMetricsRegionOverlay(squareSize);
+        return;
+      }
+
+      syncProcessingState();
+
+      if (appSettings.imageProcessing === 'none') {
+        zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
+      } else if (needsPixelProcessing(appSettings)) {
+        renderProcessedPreview(
+          cropCanvas,
+          previewProcessCanvas,
+          previewProcessCtx,
+          zoomCanvas,
+          zoomCtx,
+          appSettings,
+          squareSize
+        );
+      }
+
+      if (metricsDue) {
+        updateQualityMetrics(cachedMetricsSample);
+      }
+      updateMetricsRegionOverlay(squareSize);
+    }
+
+    function renderSaveFrame(source, centerCrop) {
+      const { sqX, sqY, squareSize } = centerCrop;
+
+      if (saveCanvas.width !== squareSize || saveCanvas.height !== squareSize) {
+        saveCanvas.width = squareSize;
+        saveCanvas.height = squareSize;
+      }
+
+      saveCtx.drawImage(
+        source,
+        sqX, sqY, squareSize, squareSize,
+        0, 0, squareSize, squareSize
+      );
+
+      if (needsPixelProcessing(appSettings)) {
+        renderProcessedSave(cropCanvas, saveCanvas, saveCtx, appSettings, squareSize);
+      }
+
+      return saveCanvas;
+    }
+
+    async function savePng() {
+      if (saveInProgress) {
+        return;
+      }
+
+      saveInProgress = true;
+      captureBtn.disabled = true;
+
+      const cameraReady = Boolean(video.srcObject && video.videoWidth);
+
+      try {
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        if (!vw || !vh) {
+          throw new Error('Could not capture image from camera.');
+        }
+
+        const centerCrop = getCenterCropRegion(vw, vh, appSettings.cropSize);
+        ensureCenterCanvases(centerCrop.squareSize);
+        cropCtx.drawImage(
+          video,
+          centerCrop.sqX, centerCrop.sqY, centerCrop.squareSize, centerCrop.squareSize,
+          0, 0, centerCrop.squareSize, centerCrop.squareSize
+        );
+
+        const outputCanvas = renderSaveFrame(video, centerCrop);
+
+        let focusScoreTag = '';
+        if (appSettings.qualityMetrics?.focusScore) {
+          focusScoreTag = formatFocusScoreForFilename(getSmoothedFocusScore());
+        }
+
+        const filename = buildImageFilename(appSettings, focusScoreTag);
+        const blob = await canvasToPngBlob(outputCanvas);
+        if (!blob) {
+          throw new Error('Could not encode image.');
+        }
+
+        if ('showSaveFilePicker' in window) {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [
+              {
+                description: 'PNG Image',
+                accept: { 'image/png': ['.png'] }
+              }
+            ]
+          });
+
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        } else {
+          const link = document.createElement('a');
+          link.download = filename;
+          link.href = URL.createObjectURL(blob);
+          link.click();
+          URL.revokeObjectURL(link.href);
+        }
+
+        showSavedFilename(filename);
+        incrementImageCounter(appSettings);
+      } catch (err) {
+        if (err?.name !== 'AbortError') {
+          console.error('Save PNG failed:', err);
+        }
+      } finally {
+        saveInProgress = false;
+        if (cameraReady) {
+          captureBtn.disabled = false;
+        }
+      }
+    }
+
+    async function init() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        showError('Camera access is not supported in this browser.');
+        return;
+      }
+
+      try {
+        const { stream, maxWidth, maxHeight } = await getMaxResolutionStream();
+        const track = stream.getVideoTracks()[0];
+        video.srcObject = stream;
+        updateMaxResolutionLabel(maxWidth, maxHeight);
+
+        await video.play();
+        await applyZoom(track);
+
+        await new Promise((resolve) => {
+          if (video.videoWidth) return resolve();
+          video.addEventListener('loadedmetadata', resolve, { once: true });
+        });
+
+        updateStats();
+        captureBtn.disabled = false;
+        startRenderLoops();
+        await storeCameraOptionsForSettings();
+
+        if (appSettings.imageProcessing === 'barcodeDetection') {
+          setTimeout(() => enableBarcodeDetection(), 1000);
+        }
+      } catch (err) {
+        showError(
+          'Could not open the environment camera. Use HTTPS or localhost and grant camera permission. ' +
+          (err.message || err.name || '')
+        );
+      }
+    }
+
+    captureBtn.addEventListener('click', savePng);
+
+    function isPageFullscreenSupported() {
+      const root = document.documentElement;
+      if (typeof root.requestFullscreen === 'function') {
+        return true;
+      }
+
+      if (typeof root.webkitRequestFullscreen !== 'function') {
+        return false;
+      }
+
+      return !/iPhone|iPod/i.test(navigator.userAgent);
+    }
+
+    function isFullscreen() {
+      return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
+    function updateFullscreenButton() {
+      const active = isFullscreen();
+      fullscreenEnterIcon.classList.toggle('hidden', active);
+      fullscreenExitIcon.classList.toggle('hidden', !active);
+      fullscreenBtn.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+    }
+
+    async function toggleFullscreen() {
+      try {
+        if (isFullscreen()) {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
+        } else {
+          const root = document.documentElement;
+          if (root.requestFullscreen) {
+            await root.requestFullscreen();
+          } else if (root.webkitRequestFullscreen) {
+            root.webkitRequestFullscreen();
+          }
+        }
+      } catch (err) {
+        console.error('Fullscreen request failed:', err);
+      }
+    }
+
+    pageTitle.addEventListener('click', startPageTitleEdit);
+    labelIncrementBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      incrementPageLabelNumber();
+    });
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = '../index.html';
+    });
+
+    menuBtn.addEventListener('click', async () => {
+      await storeCameraOptionsForSettings();
+      window.location.href = 'settings.html';
+    });
+
+    if (isPageFullscreenSupported()) {
+      fullscreenBtn.addEventListener('click', toggleFullscreen);
+      document.addEventListener('fullscreenchange', updateFullscreenButton);
+      document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+      updateFullscreenButton();
+    } else {
+      fullscreenBtn.classList.add('hidden');
+    }
+
+    window.addEventListener('pageshow', async (event) => {
+      const { resolutionChanged, cameraChanged } = applyStoredSettings();
+      if (resolutionChanged || cameraChanged || event.persisted) {
+        await restartCamera();
+      } else {
+        await applyZoomToActiveTrack();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (video.videoWidth) updateStats();
+    });
+
+    window.addEventListener('beforeunload', () => {
+      stopRenderLoops();
+      video.srcObject?.getTracks?.().forEach((t) => t.stop());
+    });
+
+    applyStoredSettings();
+    init();
+  </script>
+</body>
+</html>

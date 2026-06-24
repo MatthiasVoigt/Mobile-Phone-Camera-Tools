@@ -1,0 +1,442 @@
+Image Capture / Image Data Collection (image_capture)
+======================================================
+
+Purpose
+-------
+Mobile-first static web app for capturing labeled, high-resolution PNG photos from
+a phone or tablet camera. The app shows two live views:
+
+- Wide view (16:9) — full camera frame with a dashed overlay marking the center crop
+- Center crop (square) — the region that will be saved, with optional live processing
+  and quality metrics
+
+Users can set a custom image label, auto-increment sequence numbers, choose camera
+and resolution, apply digital zoom, run optional image-processing modes, and save the
+center crop as a PNG with a structured filename.
+
+
+Hard constraints (must follow when rebuilding)
+----------------------------------------------
+1. No ES module script tags (`type="module"`). Use `<script src>` tags plus inline
+   init blocks. The main app must work on `file://` and static hosting without a bundler.
+2. ZXing is the only dynamic import: `import('https://esm.sh/@zxing/library@0.21.3')`
+   in barcode-detection.js. Barcode modes require network access; all other features
+   work offline once loaded.
+3. Camera access requires HTTPS or localhost (or `file://` where the browser allows
+   getUserMedia). Show a clear error when permission or API is unavailable.
+4. Canvas internal pixel dimensions must track camera/crop sizes, not CSS layout size.
+   CSS scales display; processing and save use canvas buffer dimensions.
+5. Settings persist in localStorage (`experiment1-settings`). Enumerated camera device
+   list persists in sessionStorage (`experiment1-camera-options`) and is populated
+   only after the capture page has opened a camera stream at least once.
+6. Stop and release camera tracks on `beforeunload` and before restarting the camera.
+7. Do not add a build step — all logic is plain HTML/CSS/JS in a flat folder.
+
+
+File inventory (6 files + this spec)
+------------------------------------
+HTML
+  image_capture.html    Main capture UI, camera init, render loops, save
+  settings.html         Settings form; Confirm / Reset return to capture page
+
+Shared JS
+  settings.js           Constants, persistence, filename helpers, camera constraints
+  image-processing.js   Edge map, moving average, change detection
+  image-quality.js      Focus score, histogram, metrics region overlay
+  barcode-detection.js Barcode scan (native BarcodeDetector + ZXing), overlay draw
+
+Docs
+  spec.txt              This file
+
+
+Parent integration
+------------------
+Listed on repo root index.html as "Image Capture / Image Data Collection" linking to
+`image_capture/image_capture.html`. Back button on capture page navigates to
+`../index.html`. Settings menu navigates to `settings.html` in the same folder.
+
+
+Settings schema (settings.js)
+-----------------------------
+localStorage key: `experiment1-settings`
+
+Default object (getDefaultSettings):
+  imageLabel:           'Item_01'
+  imageCounter:         1
+  imageResolution:      'max'          // 'max' | '1920x1080' | '1280x720'
+  cameraSelection:      'environment'  // 'environment' | 'user' | 'device:<id>'
+  imageMagnification:   2              // 1 | 2 | 3 | 4 | 6 | 8
+  cropSize:             800            // 500 | 800 | 1000 | 1500
+  qualityMetrics:       { focusScore: true, showHistogram: false }
+  imageProcessing:      'none'         // see IMAGE_PROCESSING_OPTIONS
+  movingAverageRatio:   0.5            // clamped 0.01–0.9
+  barcodeDecoder:       'zxingHybrid'  // see BARCODE_DECODER_OPTIONS
+  barcodeFormat:        'data_matrix'  // see BARCODE_FORMAT_OPTIONS
+
+sessionStorage key: `experiment1-camera-options`
+  Array of { deviceId, label } — serialized video-input devices, refreshed when
+  capture page opens camera or user taps Settings.
+
+Filename pattern (buildImageFilename):
+  `<sanitizedLabel>_seq_<counter>[_F<NNN>].png`
+  - sanitizeImageLabel: trim; replace non-word/non-hyphen runs with `_`; collapse
+    underscores; fallback 'experiment1' if empty
+  - focus tag F<NNN>: 3-digit rounded focus score 0–999, only when focus score enabled
+  - incrementImageCounter after successful save
+
+Label helpers:
+  - labelEndsWithNumber: /\d+$/
+  - incrementLabelTrailingNumber: increment trailing digits preserving zero-padding
+  - Changing imageLabel resets imageCounter to 1
+
+Moving-average slider mapping (log scale):
+  slider 0–100 ↔ ratio 0.01–0.9
+  sliderToMovingAverageRatio: MIN * (MAX/MIN)^(t) where t = slider/100
+  formatMovingAverageRatio: 2 decimals if < 0.1, else 1 decimal
+
+
+Page: image_capture.html
+------------------------
+Script load order (required):
+  settings.js → image-quality.js → image-processing.js → barcode-detection.js
+  → inline init block
+
+Required element IDs:
+  #error                  Error banner (hidden until failure)
+  #wideCanvas             16:9 wide preview canvas
+  #zoomCanvas             Square center crop display (default 800×800 buffer)
+  #metricsRegionCanvas    Dashed circle overlay for metrics sampling region
+  #histogramCanvas        140×90 histogram (inside #histogramOverlay)
+  #histogramOverlay       Bottom-left histogram container
+  #cropCanvas             Hidden offscreen crop + processing buffer
+  #video                  Hidden camera element (playsinline, autoplay, muted)
+  #stats                  Resolution + magnification text in wide overlay
+  #captureBtn             Red circular save button
+  #savedFilenameField     Readonly filename flash (5 s after save)
+  #backBtn                → ../index.html
+  #menuBtn                → settings.html (refreshes camera list first)
+  #fullscreenBtn          Enter/exit fullscreen (hidden on unsupported browsers)
+  #pageTitle              Editable label (tap to edit inline)
+  #labelIncrementBtn      '+' button when label ends with number
+  #maxResolutionLabel     Camera max / current resolution in wide bottom overlay
+  #zoomLabel               Center crop size + processing mode label
+  #focusScoreLabel        Smoothed focus score overlay
+  #maxPixelCountLabel     Top-brightness rank from histogram
+
+
+Layout structure
+----------------
+body (flex column, min-height 100dvh, safe-area padding)
+  p#error
+  main
+    section.wide-section
+      div.wide-view (aspect-ratio 16/9, full width)
+        canvas#wideCanvas
+        div.wide-overlay
+          div.wide-overlay-top (gradient) — top bar + stats
+          div.wide-overlay-bottom (gradient) — max resolution label
+    section.zoom-section
+      div.zoom-view (square, max-width min(100vw-1.5rem, --crop-max))
+        canvas#zoomCanvas
+        canvas#metricsRegionOverlay
+        div.zoom-overlay — quality labels + capture button + filename field
+        div#histogramOverlay
+  video#video (1×1 fixed, opacity 0)
+  canvas#cropCanvas (hidden)
+
+
+CSS theme variables
+-------------------
+  --bg: #0a0a0a
+  --surface: #141414
+  --text: #f0f0f0
+  --muted: #888
+  --accent: #3b82f6
+  --accent-pressed: #2563eb
+  --safe-top / --safe-bottom: env(safe-area-inset-*)
+
+
+Camera initialization (init)
+----------------------------
+1. Require navigator.mediaDevices.getUserMedia; else showError.
+2. getMaxResolutionStream():
+   a. Open temp stream with buildVideoConstraintsForCamera(selection) to read
+      track.getCapabilities() for max width/height.
+   b. Stop temp tracks.
+   c. Compute requested resolution via getRequestedResolution(imageResolution, maxW, maxH).
+      'max' uses capability max or fallback 4096×4096.
+   d. Try up to 3 constraint sets in order:
+      - ideal width/height + zoom in extras
+      - ideal width/height + advanced: [{ zoom }]
+      - base facing/device constraints only
+   e. Throw if all attempts fail.
+3. Assign stream to #video, updateMaxResolutionLabel(max from caps or live dimensions).
+4. await video.play(); await applyZoom(track).
+5. Wait for loadedmetadata if videoWidth not yet set.
+6. Enable capture button; startRenderLoops(); storeCameraOptionsForSettings().
+7. If imageProcessing === 'barcodeDetection', setTimeout enableBarcodeDetection 1000 ms.
+
+applyZoom(track):
+  If capabilities.zoom missing, return false.
+  Try { zoom: N } then { advanced: [{ zoom: N }] }; normalize magnification to nearest
+  option in IMAGE_MAGNIFICATION_OPTIONS.
+
+buildVideoConstraintsForCamera(selection, extras):
+  device:deviceId → { deviceId: { exact } }, no facingMode
+  user → facingMode ideal 'user'
+  environment (default) → facingMode ideal 'environment'
+
+
+Render loops
+------------
+Two independent loops:
+
+Wide loop (requestAnimationFrame — drawWideFrame):
+  - Resize wideCanvas to container clientWidth × clientHeight
+  - Compute 16:9 center crop of video (getWideCropRegion)
+  - drawImage video → wide canvas
+  - Draw dashed center-crop rectangle overlay (getCenterCropRegion + mapping)
+
+Center loop (async queue — queueCenterFrame):
+  - Guard: centerLoopActive, centerInFlight (one frame at a time)
+  - If no video dimensions, retry after 16 ms
+  - setTimeout(0) → renderCenterView → queue next frame
+  - Decoupled from rAF to avoid blocking wide preview during heavy processing
+
+renderCenterView(source, centerCrop):
+  1. ensureCenterCanvases(squareSize) — cropCanvas and zoomCanvas buffers
+  2. cropCtx.drawImage center square from video
+  3. sampleQualityMetrics(cropCanvas) if metrics enabled
+  4. Branch on imageProcessing:
+     barcodeDetection:
+       - Draw raw crop to zoomCanvas
+       - scheduleBarcodeDetection(cropCanvas, settings) — throttled async
+       - drawBarcodeOverlay on zoomCtx
+     none:
+       - Draw raw crop to zoomCanvas
+     edgeMap / movingAverage / changeDetection:
+       - getImageData → applyImageProcessing → putImageData → draw to zoom
+  5. updateQualityMetrics, updateMetricsRegionOverlay
+
+Crop geometry:
+  getCenterCropRegion(vw, vh, size): squareSize = min(size, vw, vh), centered
+  getWideCropRegion(vw, vh): 16:9 center crop, letterbox logic when video taller/wider
+
+
+Processing state reset (syncProcessingState)
+------------------------------------------
+When imageProcessing, movingAverageRatio, cropSize, barcodeDecoder, or barcodeFormat
+change (joined as key string):
+  resetMovingAverage() + resetBarcodeDetection()
+
+
+Page lifecycle
+--------------
+pageshow:
+  applyStoredSettings() — reload localStorage, update UI labels
+  If resolutionChanged || cameraChanged || event.persisted → restartCamera()
+  Else → applyZoomToActiveTrack()
+
+beforeunload: stopRenderLoops(); stop all video tracks
+
+resize: updateStats() if video has dimensions
+
+Label editing:
+  Tap #pageTitle → inline input (max 64 chars); Enter/blur commits; Escape reverts
+  #labelIncrementBtn increments trailing number, resets counter to 1
+
+Fullscreen:
+  Supported when requestFullscreen exists, or webkitRequestFullscreen on non-iPhone/iPod
+  Toggle documentElement fullscreen; swap enter/exit SVG icons
+
+
+Save flow (savePng)
+-------------------
+1. Guard saveInProgress; disable capture button
+2. captureFrameForSave() — synchronous re-render of center view
+3. Optional focus score tag from fresh metrics sample
+4. filename = buildImageFilename(settings, focusScoreTag)
+5. If showSaveFilePicker:
+     zoomCanvas.toBlob → showSaveFilePicker → createWritable → write
+   Else:
+     <a download> with zoomCanvas.toDataURL('image/png')
+6. showSavedFilename 5 seconds; incrementImageCounter
+7. Ignore AbortError; re-enable button if camera still ready
+
+Saved image content: zoomCanvas pixels (processed view if mode active, else raw crop).
+
+
+Page: settings.html
+-------------------
+Script: settings.js + inline form logic
+
+Top bar:
+  #backBtn, #topConfirmBtn ("Confirm"), #setDefaultBtn ("Reset Settings")
+  Back and Confirm both saveSettingsFromForm() then navigate to image_capture.html
+  Reset Settings: getDefaultSettings(), save, navigate to capture page
+
+Setting groups (radio unless noted):
+  Image label — #imageLabel text input
+  Camera — dynamically built #cameraOptions
+    - Environment facing, Front facing
+    - One option per device from sessionStorage
+    - Status text if no devices: "Open settings from the capture page to list device cameras."
+  Request Camera Image Resolution — name="imageResolution"
+  Select Image Crop Size — name="cropSize"
+  Image Magnification — name="imageMagnification"
+  Image Quality Metrics — toggles #focusScoreToggle, #showHistogramToggle
+  Image processing — name="imageProcessing"
+    Sub-settings:
+      #blendRatioSetting (movingAverage / changeDetection) — #movingAverageRatio slider
+      #barcodeSettings — name="barcodeDecoder"
+      #barcodeFormatSettings — name="barcodeFormat"
+
+Conditional visibility (updateProcessingSubSettings):
+  blend ratio visible for movingAverage | changeDetection
+  barcode groups visible for barcodeDetection
+
+
+Module: image-processing.js
+---------------------------
+Stateful moving-average accumulator (Float32Array per frame size).
+
+Modes (imageProcessors map):
+  none            — passthrough ImageData
+  edgeMap         — Sobel edge magnitude on grayscale (3×3 kernels), RGB grayscale output
+  movingAverage   — exponential blend: acc = blend*new + retain*acc; blend from ratio
+  changeDetection — |current - acc| per channel, then update acc same as moving average
+
+Sobel kernels (edgeMap):
+  gx: [-1,0,1,-2,0,2,-1,0,1]
+  gy: [-1,-2,-1,0,0,0,1,2,1]
+  magnitude = min(255, hypot(gx, gy)); border pixels skipped
+
+getProcessingLabel(settings) — human string for zoom overlay:
+  Edge map | Moving average · <ratio> | Change detection · <ratio> | Barcode detection
+
+
+Module: image-quality.js
+------------------------
+Constants:
+  FOCUS_REGION_SIZE = 200        // center square sampled for metrics
+  FOCUS_TOP_RANK = 20            // rank in Laplacian histogram for focus score
+  BRIGHTNESS_TOP_RANK = 20       // rank in brightness histogram
+  FOCUS_AVERAGE_WINDOW_MS = 1000 // rolling average for displayed focus score
+
+Focus score pipeline (computeFocusScore):
+  1. sampleCenterRegionFromCanvas — 200×200 max center region from crop
+  2. Grayscale (ITU-R BT.601 weights)
+  3. Gaussian blur 3×3 kernel [1,2,1;2,4,2;1,2,1] / 16, edge clamp
+  4. Laplacian on blurred gray (4-neighbor)
+  5. Histogram of rounded Laplacian values; return value at FOCUS_TOP_RANK
+
+Display: recordFocusScore each frame; getSmoothedFocusScore for overlay label
+
+Histogram (showHistogram enabled):
+  computeGrayscaleHistogram on center 200×200 — 256 bins
+  drawHistogram on 140×90 canvas — blue bars, dark background
+  maxPixelCountLabel: topBrightnessFromHistogram at BRIGHTNESS_TOP_RANK
+
+drawMetricsRegionOverlay: dashed circle radius = regionW/2 centered on crop
+
+formatFocusScoreForFilename: F + 3-digit clamped rounded score
+
+
+Module: barcode-detection.js
+----------------------------
+ZXING_MODULE_URL = 'https://esm.sh/@zxing/library@0.21.3'
+BARCODE_DETECT_INTERVAL_MS = 600
+
+Decoders (settings.barcodeDecoder):
+  barcodeDetector  — native window.BarcodeDetector if available
+  zxingHybrid      — MultiFormatReader + HybridBinarizer
+  zxingGlobal      — MultiFormatReader + GlobalHistogramBinarizer
+  zxingImage       — BrowserMultiFormatReader.decodeFromImageElement (PNG data URL)
+
+Formats: 13 types (data_matrix default) — mapped to native + ZXing enum in settings.js
+Decode hints: POSSIBLE_FORMATS + TRY_HARDER
+
+scheduleBarcodeDetection:
+  Requires enableBarcodeDetection() (called 1 s after camera start in barcode mode)
+  Throttle 600 ms; async setTimeout(0) detect; updates lastBarcodeResult
+
+drawBarcodeOverlay:
+  Green box around bounding box (+8 px pad for ZXing points)
+  Top-left label: text · decoder; sub-line format name
+  "No barcode found" styling when notFound
+
+resetBarcodeDetection on processing settings change
+
+
+Barcode format table (settings.js)
+----------------------------------
+id          label       native      zxing
+data_matrix Data Matrix data_matrix DATA_MATRIX
+qr_code     QR Code     qr_code     QR_CODE
+aztec       Aztec       aztec       AZTEC
+pdf417      PDF417      pdf417      PDF_417
+ean_13      EAN-13      ean_13      EAN_13
+ean_8       EAN-8       ean_8       EAN_8
+code_128    Code 128    code_128    CODE_128
+code_39     Code 39     code_39     CODE_39
+code_93     Code 93     code_93     CODE_93
+upc_a       UPC-A       upc_a       UPC_A
+upc_e       UPC-E       upc_e       UPC_E
+itf         ITF         itf         ITF
+codabar     Codabar     codabar     CODABAR
+
+
+Global functions (cross-file, no namespace object)
+--------------------------------------------------
+settings.js:
+  loadSettings, saveSettings, getDefaultSettings
+  buildImageFilename, incrementImageCounter, sanitizeImageLabel
+  labelEndsWithNumber, incrementLabelTrailingNumber
+  clampMovingAverageRatio, sliderToMovingAverageRatio, movingAverageRatioToSlider
+  formatMovingAverageRatio, getProcessingLabel (in image-processing.js)
+  normalizeImageMagnification, normalizeCameraSelection, normalizeQualityMetrics
+  buildVideoConstraintsForCamera, getRequestedResolution, getBarcodeFormatConfig
+  refreshAndStoreCameraOptions, loadCameraOptions, saveCameraOptions
+  Constants: DEFAULT_*, CROP_SIZE_OPTIONS, IMAGE_*_OPTIONS, BARCODE_*, CAMERA_*
+
+image-processing.js:
+  applyImageProcessing, resetMovingAverage, getProcessingLabel
+
+image-quality.js:
+  sampleCenterRegionFromCanvas, computeFocusScore, computeGrayscaleHistogram
+  recordFocusScore, getSmoothedFocusScore, resetFocusScoreHistory
+  drawHistogram, topBrightnessFromHistogram, formatMaxPixelCount
+  drawMetricsRegionOverlay, formatFocusScore, formatFocusScoreForFilename
+  BRIGHTNESS_TOP_RANK (used in image_capture.html inline)
+
+barcode-detection.js:
+  resetBarcodeDetection, getLastBarcodeResult, enableBarcodeDetection
+  scheduleBarcodeDetection, drawBarcodeOverlay
+
+
+Rebuild checklist
+-----------------
+1. Create flat image_capture/ folder with all 6 source files.
+2. Implement settings.js with full schema, persistence, and camera constraint helpers.
+3. Implement image-processing.js (edge map, moving average, change detection + reset).
+4. Implement image-quality.js (focus, histogram, region overlay, filename tag).
+5. Implement barcode-detection.js (native + ZXing dynamic import, throttle, overlay).
+6. Build image_capture.html:
+   - Dark mobile layout, wide 16:9 + square zoom sections, all required IDs
+   - Script order and inline camera/render/save logic as specified
+7. Build settings.html with all setting groups and conditional sub-panels.
+8. Link from parent ../index.html.
+9. Verify: camera opens on HTTPS/localhost; wide + center previews run; settings round-trip;
+   PNG save with correct filename; focus score in filename when enabled; barcode mode
+   after 1 s delay; camera list appears in settings after visiting capture page.
+
+
+Operational notes
+-----------------
+- Grant camera permission when prompted; rear camera (environment) is default.
+- Changing resolution or camera in settings restarts the camera on return (pageshow).
+- Magnification-only changes re-apply zoom without full restart when possible.
+- ZXing barcode decoders need network on first use (esm.sh CDN).
+- File System Access API (showSaveFilePicker) used when available; otherwise download link.
+- iPhone/iPod: fullscreen button hidden (webkit fullscreen unreliable).
+- Capture button disabled until camera metadata loaded and during save.
