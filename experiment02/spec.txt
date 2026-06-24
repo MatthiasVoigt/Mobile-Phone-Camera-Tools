@@ -23,7 +23,9 @@ Hard constraints (must follow when rebuilding)
    all workspace in `init_buffers`; no per-frame vector growth.
 4. Do not log from C++ with `EM_ASM` + `UTF8ToString` — breaks the Emscripten build.
 5. Canvas pixel size must track `video.videoWidth` / `video.videoHeight`, not CSS size.
-6. After editing C++: run `./build-wasm.sh`, then hard-refresh WASM pages.
+6. Preview display: CSS `width: 100%; height: auto` on `#preview` so the view fills
+   screen width and keeps the camera aspect ratio (no fixed 16:9 box, no stretch).
+7. After editing C++: run `./build-wasm.sh`, then hard-refresh WASM pages.
 
 
 File inventory (15 files)
@@ -91,9 +93,9 @@ All three share this structure and element IDs (required by test-runner.js):
       Labels: "Turn Processing ON" / "Turn Processing OFF" (set by test-runner)
     h1#pageTitle         Centered via CSS (absolute); title set by startTestRunner
 
-  main.main-content
-    div.stage
-      canvas#preview
+  main.main-content.main-content--test
+    div.stage              Full screen width; height follows canvas aspect ratio
+      canvas#preview       Internal pixels = camera size; CSS width 100%, height auto
       div.fps-overlay    Top-left overlay labels (see Metrics section)
     p#status
     section.step-log-panel
@@ -102,7 +104,7 @@ All three share this structure and element IDs (required by test-runner.js):
   video#camera           hidden, playsinline, muted
 
 Script cache-busting: append `?v=N` to script URLs; bump N after shared-file edits.
-Current version: `?v=6` on all test pages.
+Current version: `?v=8` on all test pages.
 
 
 Metrics overlay (canvas top-left)
@@ -150,7 +152,7 @@ localStorage (test-runner `persistOverlay` → `persistFps`):
 
 Page: javascript.html
 ---------------------
-Scripts (order matters, `?v=6`):
+Scripts (order matters, `?v=8`):
   step-log.js → fps-utils.js → image-processing.js → test-runner.js
 
 Init:
@@ -166,7 +168,7 @@ Timing: image-processing.js records computeMs; Exp02Js timing API
 
 Page: wasm.html
 ---------------
-Scripts (`?v=6`):
+Scripts (`?v=8`):
   step-log.js → fps-utils.js → test-runner.js → image-processing-wasm.js → wasm-bridge.js
 
 Init:
@@ -185,7 +187,7 @@ Verbose WASM bridge logging: default ON (per-frame step log entries)
 
 Page: full-optimization.html
 ------------------------------
-Same scripts as wasm.html.
+Same scripts as wasm.html (`?v=8`).
 
 Init differences:
   Exp02Wasm.setVerboseLogging(false) before init
@@ -303,9 +305,14 @@ Styles (styles.css)
 -------------------
 Dark theme CSS variables: --bg, --surface, --text, --muted, --accent
 Safe-area padding for mobile notches
-Key classes: top-bar, top-bar-test, toggle-processing-btn, stage, fps-overlay,
-fps-label, fps-label-timing, wasm-timing-group, menu-grid, menu-btn, intro-card,
-summary-card, step-log-panel
+Key classes: top-bar, top-bar-test, main-content--test, toggle-processing-btn,
+stage, fps-overlay, fps-label, fps-label-timing, wasm-timing-group, menu-grid,
+menu-btn, intro-card, summary-card, step-log-panel
+
+Preview layout: test pages use `main-content--test` (no side padding on stage).
+Canvas buffer size matches `video.videoWidth` × `video.videoHeight`; CSS
+`width: 100%; height: auto` scales to full screen width while preserving the
+camera's native aspect ratio (no letterboxing, no stretch).
 
 
 Global API summary
@@ -324,7 +331,8 @@ EXP02_WASM_BUILD_ID     Build timestamp in generated wasm JS
 Rebuild checklist
 -----------------
 1. Create all HTML pages with required element IDs (see Test page shell).
-2. Implement styles.css (dark theme, top-bar-test centered title, overlays).
+2. Implement styles.css (dark theme, top-bar-test, main-content--test full-width
+   preview, canvas width 100% / height auto, overlays).
 3. Implement step-log.js, fps-utils.js, test-runner.js.
 4. Implement image-processing.js (Canny + timing).
 5. Implement image-processing.cpp (matching Canny params, pre-allocated buffers).
@@ -341,7 +349,9 @@ Operational notes
 - Grant camera permission when prompted.
 - Summary updates after visiting test pages; values stored in localStorage.
 - Compute time (avg) on summary requires processing ON for at least a few frames.
-- Hard-refresh test pages after code changes (`?v=6` or bump N).
+- Hard-refresh test pages after code changes (`?v=8` or bump N).
+- On mobile, preview should span full screen width with correct portrait/landscape
+  aspect ratio (no thin letterboxed column).
 - WASM load confirmed when step log shows: WebAssembly runtime initialized (build …)
 - Use Copy log on test pages to export debug traces.
 - If WASM behaves oddly after C++ edits: rebuild, hard-refresh, check EXP02_WASM_BUILD_ID.

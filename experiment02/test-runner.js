@@ -109,6 +109,7 @@
   }) {
     const video = document.getElementById('camera');
     const canvas = document.getElementById('preview');
+
     const isFullOptimization = optimization === 'full';
     const verboseFrameLog = !isFullOptimization;
     const ctx = canvas.getContext('2d', {
