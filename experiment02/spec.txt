@@ -1,0 +1,343 @@
+WebAssembly vs JavaScript — Performance Experiment (experiment02)
+===================================================================
+
+Purpose
+-------
+Real-time camera app that draws Canny edge outlines. Three implementations compute
+the same visual effect; the app compares speed (FPS and compute milliseconds).
+
+- JavaScript — Canny in plain JS
+- WebAssembly — same algorithm in C++, full resolution
+- Full Optimization — same Canny in WASM at half resolution, upscaled for display
+
+All pages live in a flat `experiment02/` folder. Open via `file://` or a local server.
+
+
+Hard constraints (must follow when rebuilding)
+----------------------------------------------
+1. No ES modules (`type="module"`). Use `<script src>` tags + small inline init
+   blocks. ES modules fail on `file://` in this project.
+2. WASM must be embedded in JS (`SINGLE_FILE=1`) — separate `.wasm` fetch fails
+   on `file://`.
+3. WASM heap is fixed at 64 MB (`ALLOW_MEMORY_GROWTH=0`). C++ must pre-allocate
+   all workspace in `init_buffers`; no per-frame vector growth.
+4. Do not log from C++ with `EM_ASM` + `UTF8ToString` — breaks the Emscripten build.
+5. Canvas pixel size must track `video.videoWidth` / `video.videoHeight`, not CSS size.
+6. After editing C++: run `./build-wasm.sh`, then hard-refresh WASM pages.
+
+
+File inventory (15 files)
+-------------------------
+HTML
+  index.html              Entry: intro card + nav to all pages
+  javascript.html         JS Canny test
+  wasm.html               WASM Canny test, full resolution
+  full-optimization.html  WASM Canny, half-res processing, upscaled display
+  summary.html            Compare stored FPS + compute times
+
+CSS
+  styles.css              Dark theme, mobile layout, overlays, intro card
+
+Shared JS
+  step-log.js             Debug log panel + Copy log
+  fps-utils.js            FpsTracker, TimingTracker, localStorage helpers
+  test-runner.js          Camera, frame loop, overlays, persistence
+
+Processing
+  image-processing.js     JS Canny + Exp02Js timing API
+  image-processing.cpp    C++ Canny (compiled to WASM)
+  wasm-bridge.js          Load WASM, buffers, timed processFrameWasm
+  build-wasm.sh           Emscripten build script
+  image-processing-wasm.js Build output (generated; do not hand-edit)
+
+Docs
+  spec.txt                This file
+
+
+Canny algorithm (JS and C++ — independent implementations, identical parameters)
+--------------------------------------------------------------------------------
+Pipeline: RGBA → grayscale → Gaussian blur → Sobel → non-max suppression → hysteresis → RGBA edges (white on black).
+
+Parameters (both `image-processing.js` and `image-processing.cpp`):
+  CANNY_THRESHOLD1 = 50
+  CANNY_THRESHOLD2 = 150
+  CANNY_APERTURE_SIZE = 3
+  CANNY_L2_GRADIENT = false   (L1 magnitude: |dX| + |dY|)
+
+Fairness: every camera frame is processed when toggle is ON (no frame skipping).
+JS and WASM options use full camera resolution. Full Optimization uses the same
+Canny parameters at half resolution (`processScale` 0.5, clamped 0.25–1.0).
+
+
+Page: index.html
+----------------
+- Header: title "WASM vs JavaScript"
+- `section.summary-card.intro-card` — plain-language explanation + 7-step how-to
+- Four `a.menu-btn` links: javascript, wasm, full-optimization, summary
+- No JavaScript files loaded
+
+
+Test page shell (javascript.html, wasm.html, full-optimization.html)
+----------------------------------------------------------------------
+All three share this structure and element IDs (required by test-runner.js):
+
+  header.top-bar.top-bar-test
+    a.icon-btn           ← back to index.html
+    button#toggleProcessing.toggle-processing-btn
+      Labels: "Turn Processing ON" / "Turn Processing OFF" (set by test-runner)
+    h1#pageTitle         Centered via CSS (absolute); title set by startTestRunner
+
+  main.main-content
+    div.stage
+      canvas#preview
+      div.fps-overlay    Top-left overlay labels (see Metrics section)
+    p#status
+    section.step-log-panel
+      h2, p#lastStep, pre#stepLog, button#copyStepLogBtn
+
+  video#camera           hidden, playsinline, muted
+
+Script cache-busting: append `?v=N` to script URLs; bump N after shared-file edits.
+Current version: `?v=6` on all test pages.
+
+
+Metrics overlay (canvas top-left)
+---------------------------------
+Always present on test pages:
+  #resolutionLabel     e.g. "1920 × 1080 px" or "1920 × 1080 px (proc 960×540)"
+  #displayFps          "Display FPS: N" — passthrough rate
+  #processingFps       "Processing FPS: N" — hidden until processing first enabled
+
+JavaScript page only:
+  #jsComputeMs         "JS compute (avg): X.XX ms" — hidden until processing ran
+
+WASM pages only (wasm.html, full-optimization.html):
+  #wasmTimingGroup     Container, hidden until processing ran
+    #wasmCopyInMs      "WASM copy in (avg): X.XX ms"
+    #wasmComputeMs     "WASM compute (avg): X.XX ms"
+    #wasmTotalMs       "WASM total (avg): X.XX ms"
+
+Rolling window: 1 second for all averages (FpsTracker / TimingTracker).
+
+FPS rules:
+  Display FPS     — updates while processing OFF; freezes when ON
+  Processing FPS  — hidden until first ON; updates while ON; freezes when OFF
+
+Timing rules:
+  Sampled only while processing ON; overlay freezes when OFF (same as Processing FPS)
+  JS compute      — `cannyEdgeDetect()` wall time only
+  WASM copy in    — `HEAPU8.set` input
+  WASM compute    — `_process_canny` only
+  WASM total      — copy in + compute + copy out
+
+localStorage (test-runner `persistOverlay` → `persistFps`):
+  Keys:
+    exp02-js-fps
+    exp02-wasm-fps
+    exp02-full-optimization-fps
+  Value:
+    { displayFps, processingFps, computeMs, updatedAt }
+  computeMs — rolling 1 s average of computation only (JS `cannyEdgeDetect` or WASM
+  `_process_canny`). `TimingTracker.getComputeMs()` returns the average, or the last
+  single-frame measurement if the window is empty. `persistFps` keeps the previous
+  computeMs when no new sample is available.
+  Saved on: every overlay update, processing toggle OFF, pagehide, and visibility hidden.
+
+
+Page: javascript.html
+---------------------
+Scripts (order matters, `?v=6`):
+  step-log.js → fps-utils.js → image-processing.js → test-runner.js
+
+Init:
+  Exp02TestRunner.startTestRunner({
+    title: 'JavaScript',
+    storageKey: 'exp02-js-fps',
+    processFrame(imageData, w, h) { return cannyEdgeDetect(imageData, w, h); },
+  });
+
+Overlay extra: #jsComputeMs
+Timing: image-processing.js records computeMs; Exp02Js timing API
+
+
+Page: wasm.html
+---------------
+Scripts (`?v=6`):
+  step-log.js → fps-utils.js → test-runner.js → image-processing-wasm.js → wasm-bridge.js
+
+Init:
+  Exp02Wasm.initWasmBridge().then(() =>
+    Exp02TestRunner.startTestRunner({
+      title: 'WebAssembly',
+      storageKey: 'exp02-wasm-fps',
+      onReady(w, h)       { Exp02Wasm.setupWasmBuffers(w, h); },
+      onResize(w, h)      { Exp02Wasm.setupWasmBuffers(w, h); },
+      processFrame(data, w, h) { return Exp02Wasm.processFrameWasm(data, w, h); },
+    })
+  );
+
+Verbose WASM bridge logging: default ON (per-frame step log entries)
+
+
+Page: full-optimization.html
+------------------------------
+Same scripts as wasm.html.
+
+Init differences:
+  Exp02Wasm.setVerboseLogging(false) before init
+  startTestRunner({
+    title: 'Full Optimization',
+    storageKey: 'exp02-full-optimization-fps',
+    optimization: 'full',
+    processScale: 0.5,
+    onReady(processW, processH)    { Exp02Wasm.setupWasmBuffers(processW, processH); },
+    onResize(processW, processH)   { Exp02Wasm.setupWasmBuffers(processW, processH); },
+    processFrame ...
+  })
+
+Full Optimization frame path (test-runner.js, optimization='full'):
+  1. Draw video to offscreen processCanvas at processWidth × processHeight
+  2. getImageData at process size → processFrame → putImageData on process canvas
+  3. Upscale processCanvas to display canvas (imageSmoothingEnabled = false)
+  Display canvas context: willReadFrequently false
+  Process canvas context: willReadFrequently true
+  No per-frame step log in the frame loop
+
+
+Page: summary.html
+------------------
+Scripts: fps-utils.js + inline builder
+
+For each test case, render a summary-card with:
+  Display FPS, Processing FPS, Compute time (avg), Last updated
+Show "—" / "No data yet" when key missing. Footer: results are per-browser only.
+
+
+Shared module: test-runner.js
+-------------------------------
+Exp02TestRunner.startTestRunner({
+  title,                  // sets #pageTitle
+  storageKey,             // localStorage key
+  processFrame,           // (imageData, w, h) => ImageData
+  onReady, onResize,      // optional; arity 2 or 4 in full optimization
+  onError,                // optional camera failure
+  optimization,           // 'none' (default) or 'full'
+  processScale,           // default 0.5
+})
+
+Camera: auto-start on load. Fallback constraints:
+  1080p rear → 720p rear → default rear → any camera
+Waits up to 10 s for video dimensions.
+
+Toggle #toggleProcessing switches processingActive; green `.active` class when ON.
+
+Persistence helpers in test-runner:
+  readComputeMs(now)  — Exp02Js/Exp02Wasm getComputeMs, then frozen overlay fallback
+  persistOverlay(now) — reads computeMs, calls persistFps with last known value
+  pagehide / visibilitychange:hidden — final persist before leaving page
+
+
+Shared module: fps-utils.js
+-----------------------------
+FpsTracker       — rolling 1 s frame count
+TimingTracker    — rolling 1 s duration averages; lastComputeMs fallback
+  getAverages(now)   — { copyInMs, computeMs, totalMs, sampleCount } or null
+  getComputeMs(now)  — average computeMs, or lastComputeMs if window empty
+persistFps(key, displayFps, processingFps, computeMs?)
+readStoredFps(key)
+
+
+Shared module: step-log.js
+--------------------------
+window.Exp02Log: step, log, error, nextFrame, getLogText, copyLog
+Max 80 lines in #stepLog. Copy log includes "Last step:" header.
+
+
+Shared module: image-processing.js
+----------------------------------
+window.cannyEdgeDetect(imageData, w, h) — full Canny pipeline, timed
+window.Exp02Js: getTimingAverages, getComputeMs, freezeTiming, resumeTiming
+Logs sub-steps with `[JS]` prefix when Exp02Log present
+
+
+Shared module: wasm-bridge.js
+-------------------------------
+Exp02Wasm.initWasmBridge()        — ImageProcessingModule(), await ready
+Exp02Wasm.setupWasmBuffers(w, h)  — _init_buffers, allocate output ImageData
+Exp02Wasm.processFrameWasm()    — timed copy in / compute / copy out
+Exp02Wasm.getTimingAverages() / getComputeMs()
+Exp02Wasm.freezeTiming() / resumeTiming()
+Exp02Wasm.setVerboseLogging(bool)
+
+Exported C functions used: _init_buffers, _get_input_buffer, _get_output_buffer,
+_process_canny. Pointers refreshed each frame; pixel copy via HEAPU8.
+
+
+WebAssembly build (build-wasm.sh)
+---------------------------------
+Requires Emscripten (`em++`).
+
+  em++ image-processing.cpp -O3 \
+    -s WASM=1 -s SINGLE_FILE=1 \
+    -s MODULARIZE=1 -s EXPORT_NAME='ImageProcessingModule' \
+    -s EXPORTED_FUNCTIONS='["_init_buffers","_get_input_buffer","_get_output_buffer","_process_canny","_malloc","_free"]' \
+    -s EXPORTED_RUNTIME_METHODS='["HEAPU8"]' \
+    -s ALLOW_MEMORY_GROWTH=0 -s INITIAL_MEMORY=67108864 \
+    -o image-processing-wasm.js
+
+Prepend build stamp to output:
+  globalThis.EXP02_WASM_BUILD_ID="<YYYYMMDDHHMMSS>";
+
+C++ exports (image-processing.cpp):
+  init_buffers(width, height)   — allocate input/output RGBA + workspace vectors
+  get_input_buffer()            — uint8_t* RGBA in
+  get_output_buffer()           — uint8_t* RGBA out
+  process_canny(width, height)  — run pipeline in-place
+
+
+Styles (styles.css)
+-------------------
+Dark theme CSS variables: --bg, --surface, --text, --muted, --accent
+Safe-area padding for mobile notches
+Key classes: top-bar, top-bar-test, toggle-processing-btn, stage, fps-overlay,
+fps-label, fps-label-timing, wasm-timing-group, menu-grid, menu-btn, intro-card,
+summary-card, step-log-panel
+
+
+Global API summary
+------------------
+Exp02Log           step, log, error, nextFrame, getLogText, copyLog
+Exp02Fps           FpsTracker, TimingTracker, persistFps, readStoredFps
+Exp02TestRunner    startTestRunner({ ... })
+cannyEdgeDetect    JS processing function
+Exp02Js            getTimingAverages, getComputeMs, freezeTiming, resumeTiming
+Exp02Wasm          init, buffers, processFrameWasm, getTimingAverages,
+                   getComputeMs, freezeTiming, resumeTiming, setVerboseLogging
+ImageProcessingModule   Emscripten factory (from image-processing-wasm.js)
+EXP02_WASM_BUILD_ID     Build timestamp in generated wasm JS
+
+
+Rebuild checklist
+-----------------
+1. Create all HTML pages with required element IDs (see Test page shell).
+2. Implement styles.css (dark theme, top-bar-test centered title, overlays).
+3. Implement step-log.js, fps-utils.js, test-runner.js.
+4. Implement image-processing.js (Canny + timing).
+5. Implement image-processing.cpp (matching Canny params, pre-allocated buffers).
+6. Run ./build-wasm.sh → generates image-processing-wasm.js.
+7. Implement wasm-bridge.js.
+8. Wire inline init in each test HTML page (see per-page sections).
+9. Implement summary.html card builder reading three localStorage keys.
+10. Open index.html, run each test with Turn Processing ON, verify summary shows
+    Display FPS, Processing FPS, and Compute time (avg) for all three tests.
+
+
+Operational notes
+-----------------
+- Grant camera permission when prompted.
+- Summary updates after visiting test pages; values stored in localStorage.
+- Compute time (avg) on summary requires processing ON for at least a few frames.
+- Hard-refresh test pages after code changes (`?v=6` or bump N).
+- WASM load confirmed when step log shows: WebAssembly runtime initialized (build …)
+- Use Copy log on test pages to export debug traces.
+- If WASM behaves oddly after C++ edits: rebuild, hard-refresh, check EXP02_WASM_BUILD_ID.

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="icon" href="data:,">
+  <title>WASM vs JavaScript Experiment</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top-bar">
+    <h1>WASM vs JavaScript</h1>
+  </header>
+
+  <main class="main-content">
+    <div class="menu-grid">
+      <section class="summary-card intro-card">
+        <h2>What is this experiment?</h2>
+        <p>
+          This app uses your device camera and turns the live video into a black-and-white
+          <strong>edge drawing</strong> — like tracing the outlines of people, objects, and
+          shapes in the scene. The picture you see is the same in all three tests; only the
+          <em>way the computer calculates those edges</em> changes.
+        </p>
+        <p>
+          We run that same job three different ways to compare speed:
+        </p>
+        <ul>
+          <li><strong>JavaScript</strong> — the usual language web pages are written in.</li>
+          <li><strong>WebAssembly</strong> — a faster, compiled version of the same steps.</li>
+          <li><strong>Full Optimization</strong> — WebAssembly tuned for maximum speed.</li>
+        </ul>
+        <p>
+          Higher <strong>FPS</strong> (frames per second) means smoother, faster processing.
+          After you try each test, open <strong>Comparison summary</strong> to see the numbers
+          side by side.
+        </p>
+
+        <h2>How to run each experiment</h2>
+        <ol>
+          <li>Tap one of the three tests below (start with any — the steps are the same).</li>
+          <li>Allow <strong>camera access</strong> when your browser asks.</li>
+          <li>You will see live video from your camera. Note the <strong>Display FPS</strong> while processing is off.</li>
+          <li>Tap <strong>Turn Processing ON</strong> in the top-left corner. The view switches to the edge drawing.</li>
+          <li>Watch <strong>Processing FPS</strong> — that is how fast the edge effect runs.</li>
+          <li>Use the <strong>← back arrow</strong> to return here, then repeat for the other two tests.</li>
+          <li>Open <strong>Comparison summary</strong> to compare your latest results from all three tests.</li>
+        </ol>
+      </section>
+
+      <a class="menu-btn" href="javascript.html">
+        JavaScript test
+        <span>Edge detection using normal web code</span>
+      </a>
+      <a class="menu-btn" href="wasm.html">
+        WebAssembly test
+        <span>Same edge effect, using compiled WebAssembly</span>
+      </a>
+      <a class="menu-btn" href="full-optimization.html">
+        Full Optimization
+        <span>Same look on screen, built for the highest speed</span>
+      </a>
+      <a class="menu-btn" href="summary.html">
+        Comparison summary
+        <span>See FPS results from all three tests together</span>
+      </a>
+    </div>
+  </main>
+</body>
+</html>

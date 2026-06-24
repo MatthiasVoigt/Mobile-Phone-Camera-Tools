@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="icon" href="data:,">
+  <title>Comparison Summary</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top-bar">
+    <a class="icon-btn" href="index.html" aria-label="Back">←</a>
+    <h1>Comparison Summary</h1>
+    <span style="width:2.5rem"></span>
+  </header>
+
+  <main class="main-content">
+    <div class="summary-grid" id="summaryGrid"></div>
+    <p class="status-text">Run each test page with processing on to record FPS and compute timings. Results are stored in this browser via localStorage.</p>
+  </main>
+
+  <script src="fps-utils.js"></script>
+  <script>
+    const cases = [
+      { key: 'exp02-js-fps', title: 'JavaScript' },
+      { key: 'exp02-wasm-fps', title: 'WebAssembly' },
+      { key: 'exp02-full-optimization-fps', title: 'Full Optimization' },
+    ];
+
+    function formatFps(value) {
+      return typeof value === 'number' ? value + ' FPS' : '—';
+    }
+
+    function formatComputeMs(value) {
+      return typeof value === 'number' ? value.toFixed(2) + ' ms' : '—';
+    }
+
+    function formatUpdatedAt(value) {
+      if (!value) return 'No data yet';
+      try {
+        return new Date(value).toLocaleString();
+      } catch {
+        return value;
+      }
+    }
+
+    const grid = document.getElementById('summaryGrid');
+
+    for (const testCase of cases) {
+      const stored = Exp02Fps.readStoredFps(testCase.key);
+      const card = document.createElement('section');
+      card.className = 'summary-card';
+      card.innerHTML =
+        '<h2>' + testCase.title + '</h2>' +
+        '<div class="summary-row"><span>Display FPS</span><span class="value">' + formatFps(stored && stored.displayFps) + '</span></div>' +
+        '<div class="summary-row"><span>Processing FPS</span><span class="value">' + formatFps(stored && stored.processingFps) + '</span></div>' +
+        '<div class="summary-row"><span>Compute time (avg)</span><span class="value">' + formatComputeMs(stored && stored.computeMs) + '</span></div>' +
+        '<p class="summary-meta">Last updated: ' + formatUpdatedAt(stored && stored.updatedAt) + '</p>';
+      grid.appendChild(card);
+    }
+  </script>
+</body>
+</html>
