@@ -66,7 +66,8 @@ Default object (getDefaultSettings):
   imageResolution:      'max'          // 'max' | '1920x1080' | '1280x720'
   cameraSelection:      'environment'  // 'environment' | 'user' | 'device:<id>'
   imageMagnification:   2              // 1 | 2 | 3 | 4 | 6 | 8
-  cropSize:             800            // 500 | 800 | 1000 | 1500
+  cropSize:             800            // 500 | 800 | 1000 | 1500 | 'none' | 'roi'
+  cropRoi:              null           // { x, y, width, height } in full-frame pixels, or null
   qualityMetrics:       { focusScore: true, showHistogram: false }
   imageProcessing:      'none'         // see IMAGE_PROCESSING_OPTIONS
   movingAverageRatio:   0.5            // clamped 0.01–0.9
@@ -160,18 +161,22 @@ Camera initialization (init)
 ----------------------------
 1. Require navigator.mediaDevices.getUserMedia; else showError.
 2. getMaxResolutionStream():
-   a. Open temp stream with buildVideoConstraintsForCamera(selection) to read
-      track.getCapabilities() for max width/height.
-   b. Stop temp tracks.
+   a. Probe with an ideal 4096×3024 request, then an unconstrained request,
+      and read width/height capabilities from whichever probe opens.
+   b. Stop the probe tracks.
    c. Compute requested resolution via getRequestedResolution(imageResolution, maxW, maxH).
       'max' uses capability max or fallback 4096×4096.
-   d. Try up to 3 constraint sets in order:
-      - ideal width/height + zoom in extras
-      - ideal width/height + advanced: [{ zoom }]
-      - base facing/device constraints only
-   e. Throw if all attempts fail.
+   d. Open the real stream with resolution only. Zoom is not part of these
+      constraints, because a rejected zoom used to fall through to the
+      unconstrained camera and silently drop the resolution.
+      Order: min+ideal of the request, ideal only, then (for 'max') ideal
+      3840×2160, 1920×1440, 1920×1080, 1280×720, then unconstrained.
+   e. After a sized stream opens, applyConstraints again to the same size.
+   f. Throw if every attempt fails.
 3. Assign stream to #video, updateMaxResolutionLabel(max from caps or live dimensions).
-4. await video.play(); await applyZoom(track).
+4. await video.play(); size the video element to videoWidth×videoHeight so iOS
+   decodes full frames; await applyZoom(track); apply the requested size again
+   so zoom cannot leave the track at the low default.
 5. Wait for loadedmetadata if videoWidth not yet set.
 6. Enable capture button; startRenderLoops(); storeCameraOptionsForSettings().
 7. If imageProcessing === 'barcodeDetection', setTimeout enableBarcodeDetection 1000 ms.
@@ -219,7 +224,15 @@ renderCenterView(source, centerCrop):
   5. updateQualityMetrics, updateMetricsRegionOverlay
 
 Crop geometry:
-  getCenterCropRegion(vw, vh, size): squareSize = min(size, vw, vh), centered
+  getCenterCropRegion(vw, vh, size): square = min(size, vw, vh), centered.
+  cropSize 'none' skips the crop and uses the full video frame (src 0,0, vw, vh).
+  cropSize 'roi' uses cropRoi { x, y, width, height } in full-frame pixels, clamped
+  so the rectangle stays inside the current video frame. Sides move in 40-pixel
+  steps while the ROI button is in edit mode. Width and height cannot be smaller
+  than the smallest numeric crop size (minimumCropSize(), currently 500), unless
+  the frame itself is smaller. Select ROI stores that rectangle
+  and sets cropSize to 'roi' for the following preview and save frames.
+  'none' and 'roi' size the view with --frame-aspect (width / height), not a square.
   getWideCropRegion(vw, vh): 16:9 center crop, letterbox logic when video taller/wider
 
 
@@ -256,14 +269,18 @@ Save flow (savePng)
 2. captureFrameForSave() — synchronous re-render of center view
 3. Optional focus score tag from fresh metrics sample
 4. filename = buildImageFilename(settings, focusScoreTag)
-5. If showSaveFilePicker:
-     zoomCanvas.toBlob → showSaveFilePicker → createWritable → write
+5. Export an offscreen canvas copied from cropCanvas at its bitmap size
+   (not the CSS-scaled zoomCanvas, which iOS was saving at screen resolution).
+   Barcode mode redraws the overlay onto that export.
+   If showSaveFilePicker:
+     exportCanvas.toBlob → showSaveFilePicker → createWritable → write
    Else:
-     <a download> with zoomCanvas.toDataURL('image/png')
+     <a download> with exportCanvas.toDataURL('image/png')
 6. showSavedFilename 5 seconds; incrementImageCounter
 7. Ignore AbortError; re-enable button if camera still ready
 
-Saved image content: zoomCanvas pixels (processed view if mode active, else raw crop).
+Saved image content: cropCanvas pixels at the video crop size (processed view if mode
+active, else raw crop). The on-screen zoomCanvas is only the preview.
 
 
 Page: settings.html
@@ -282,7 +299,8 @@ Setting groups (radio unless noted):
     - One option per device from sessionStorage
     - Status text if no devices: "Open settings from the capture page to list device cameras."
   Request Camera Image Resolution — name="imageResolution"
-  Select Image Crop Size — name="cropSize"
+  Select Image Crop Size — name="cropSize" (500, 800, 1000, 1500, none, or roi).
+    Custom ROI shows the stored cropRoi size when one has been selected.
   Image Magnification — name="imageMagnification"
   Image Quality Metrics — toggles #focusScoreToggle, #showHistogramToggle
   Image processing — name="imageProcessing"

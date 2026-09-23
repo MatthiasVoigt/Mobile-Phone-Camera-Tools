@@ -311,6 +311,14 @@
         <input type="radio" name="cropSize" value="1500">
         <span>1500 × 1500</span>
       </label>
+      <label class="option">
+        <input type="radio" name="cropSize" value="none">
+        <span>No crop</span>
+      </label>
+      <label class="option">
+        <input type="radio" name="cropSize" value="roi">
+        <span id="roiCropLabel">Custom ROI</span>
+      </label>
     </div>
 
     <div class="setting-group" id="magnificationSettings">
@@ -549,8 +557,19 @@
       });
 
       document.querySelectorAll('input[name="cropSize"]').forEach((input) => {
-        input.checked = Number(input.value) === nextSettings.cropSize;
+        if (input.value === NO_CROP) {
+          input.checked = isNoCrop(nextSettings.cropSize);
+        } else if (input.value === ROI_CROP) {
+          input.checked = isRoiCrop(nextSettings.cropSize);
+        } else {
+          input.checked = Number(input.value) === nextSettings.cropSize;
+        }
       });
+
+      const roiCropLabel = document.getElementById('roiCropLabel');
+      if (roiCropLabel) {
+        roiCropLabel.textContent = formatCustomRoiLabel(nextSettings.cropRoi);
+      }
 
       const magnification = normalizeImageMagnification(nextSettings.imageMagnification);
       document.querySelectorAll('input[name="imageMagnification"]').forEach((input) => {
@@ -607,7 +626,7 @@
       const resolution = document.querySelector('input[name="imageResolution"]:checked');
       const imageResolution = resolution ? resolution.value : DEFAULT_IMAGE_RESOLUTION;
       const choice = document.querySelector('input[name="cropSize"]:checked');
-      const cropSize = choice ? Number(choice.value) : DEFAULT_CROP_SIZE;
+      const cropSize = choice ? normalizeCropSize(choice.value) : DEFAULT_CROP_SIZE;
       const magnification = document.querySelector('input[name="imageMagnification"]:checked');
       const imageMagnification = magnification
         ? normalizeImageMagnification(Number(magnification.value))
@@ -638,6 +657,7 @@
         cameraSelection,
         imageMagnification,
         cropSize,
+        cropRoi: sanitizeRoi(settings.cropRoi),
         qualityMetrics,
         imageProcessing,
         movingAverageRatio,

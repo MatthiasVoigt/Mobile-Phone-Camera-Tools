@@ -227,17 +227,16 @@ function formatMaxPixelCount(brightness) {
   return `Max Pixel Count · ${brightness}`;
 }
 
-function drawMetricsRegionOverlay(ctx, squareSize) {
-  const { regionW } = getCenterRegionBounds(squareSize, squareSize);
-  const radius = regionW / 2;
-  const center = squareSize / 2;
+function drawMetricsRegionOverlay(ctx, width, height, color) {
+  const { startX, startY, regionW, regionH } = getCenterRegionBounds(width, height);
+  const radius = Math.min(regionW, regionH) / 2;
 
-  ctx.clearRect(0, 0, squareSize, squareSize);
+  ctx.clearRect(0, 0, width, height);
   ctx.setLineDash([8, 6]);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = color || 'rgba(255, 255, 255, 0.5)';
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.arc(center, center, radius, 0, Math.PI * 2);
+  ctx.arc(startX + regionW / 2, startY + regionH / 2, radius, 0, Math.PI * 2);
   ctx.stroke();
   ctx.setLineDash([]);
 }

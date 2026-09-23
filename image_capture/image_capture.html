@@ -61,6 +61,19 @@
 
     .overlay-btn:active { background: rgba(0, 0, 0, 0.55); }
 
+    .roi-btn {
+      width: auto;
+      min-width: 2.5rem;
+      padding: 0 0.5rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .roi-btn.active {
+      background: rgba(59, 130, 246, 0.92);
+    }
+
     h1 {
       font-weight: 600;
       letter-spacing: 0.02em;
@@ -108,7 +121,7 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       text-align: center;
-      font-size: 1.05rem;
+      font-size: 1.26rem;
     }
 
     #pageTitle:active {
@@ -145,7 +158,7 @@
 
     .page-title-input {
       pointer-events: auto;
-      font-size: 1.05rem;
+      font-size: 1.26rem;
       font-weight: 600;
       letter-spacing: 0.02em;
       text-align: center;
@@ -183,61 +196,7 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
       padding: 0 0 0.75rem;
-    }
-
-    .wide-section {
-      flex-shrink: 0;
-    }
-
-    .wide-view {
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      background: var(--surface);
-      overflow: hidden;
-      position: relative;
-    }
-
-    .wide-view canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .wide-overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    .wide-overlay-top {
-      padding: calc(0.75rem + var(--safe-top)) 1rem 1.25rem;
-      background: linear-gradient(
-        to bottom,
-        rgba(0, 0, 0, 0.72) 0%,
-        rgba(0, 0, 0, 0.35) 55%,
-        transparent 100%
-      );
-    }
-
-    .wide-overlay-bottom {
-      padding: 1rem 0.75rem 0.65rem;
-      background: linear-gradient(
-        to top,
-        rgba(0, 0, 0, 0.55) 0%,
-        transparent 100%
-      );
-    }
-
-    .wide-overlay-bottom .zoom-label {
-      color: rgba(255, 255, 255, 0.8);
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
     }
 
     .zoom-section {
@@ -272,6 +231,15 @@
       aspect-ratio: 1 / 1;
     }
 
+    .zoom-view.full-frame {
+      max-width: 100%;
+      aspect-ratio: var(--frame-aspect, 4 / 3);
+    }
+
+    .zoom-view.full-frame canvas {
+      aspect-ratio: var(--frame-aspect, 4 / 3);
+    }
+
     .metrics-region-overlay {
       position: absolute;
       inset: 0;
@@ -281,21 +249,136 @@
       z-index: 1;
     }
 
+    .screen-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+    }
+
     .zoom-overlay {
       position: absolute;
       inset: 0;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: flex-end;
       pointer-events: none;
-      z-index: 2;
+      z-index: 6;
+    }
+
+    .roi-editor {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .roi-rect {
+      position: absolute;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
+    }
+
+    .roi-edge {
+      position: absolute;
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    .roi-edge-top,
+    .roi-edge-bottom {
+      left: 18px;
+      right: 18px;
+      height: 36px;
+    }
+
+    .roi-edge-top { top: -18px; }
+    .roi-edge-bottom { bottom: -18px; }
+
+    .roi-edge-left,
+    .roi-edge-right {
+      top: 18px;
+      bottom: 18px;
+      width: 36px;
+    }
+
+    .roi-edge-left { left: -18px; }
+    .roi-edge-right { right: -18px; }
+
+    .roi-edge::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      background: #fff;
+      border-radius: 2px;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+      transform: translate(-50%, -50%);
+    }
+
+    .roi-edge-top::after,
+    .roi-edge-bottom::after {
+      width: 2.25rem;
+      height: 4px;
+    }
+
+    .roi-edge-left::after,
+    .roi-edge-right::after {
+      width: 4px;
+      height: 2.25rem;
+    }
+
+    .roi-select {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: 1;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      pointer-events: none;
+    }
+
+    .roi-select-btn {
+      pointer-events: auto;
+      touch-action: manipulation;
+      padding: 0.7rem 1.05rem;
+      border: none;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      white-space: nowrap;
+      letter-spacing: 0.01em;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+      cursor: pointer;
+    }
+
+    .roi-select-size {
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      line-height: 1.2;
+      white-space: nowrap;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+    }
+
+    .roi-select-btn:active {
+      background: var(--accent-pressed);
     }
 
     .zoom-overlay-top {
       display: flex;
       flex-direction: column;
       gap: 0.35rem;
-      padding: 0.65rem 0.85rem 1.5rem;
+      padding: calc(0.65rem + var(--safe-top)) 0.75rem 1.5rem;
       background: linear-gradient(
         to bottom,
         rgba(0, 0, 0, 0.72) 0%,
@@ -304,17 +387,86 @@
       );
     }
 
-    .zoom-overlay-top .zoom-label,
-    .quality-metric {
-      color: rgba(255, 255, 255, 0.8);
+    .view-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.12rem;
+    }
+
+    .view-info .stats,
+    .view-info .zoom-label,
+    .view-info .quality-metric {
+      margin: 0;
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      line-height: 1.35;
+      text-transform: none;
+      text-align: left;
+      color: #fff;
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
     }
 
-    .quality-metric {
-      display: block;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+    .view-info .stats span {
+      color: inherit;
+      font-weight: inherit;
+      font-variant-numeric: inherit;
+    }
+
+    .focus-meter {
+      position: absolute;
+      left: 0.75rem;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.35rem;
+      pointer-events: none;
+    }
+
+    .focus-meter-value {
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1.2;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    }
+
+    .focus-meter-bar {
+      position: relative;
+      width: 1.15rem;
+      height: 50dvh;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+    }
+
+    .focus-meter-fill {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to top,
+        #eab308 0%,
+        #eab308 42%,
+        #22c55e 60%,
+        #14532d 100%
+      );
+    }
+
+    .focus-meter-level {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: #fff;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+      bottom: 0;
+      transform: translateY(50%);
     }
 
     .zoom-overlay-bottom {
@@ -415,75 +567,81 @@
 
     #video {
       position: fixed;
-      width: 1px;
-      height: 1px;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
       opacity: 0;
       pointer-events: none;
+      z-index: -1;
     }
   </style>
 </head>
 <body>
   <p class="error" id="error"></p>
 
-  <main>
-    <section class="wide-section" aria-label="Wide view">
-      <div class="wide-view">
-        <canvas id="wideCanvas"></canvas>
-        <div class="wide-overlay">
-          <div class="wide-overlay-top">
-            <div class="top-bar">
-              <button class="overlay-btn back-btn" id="backBtn" type="button" aria-label="Back to tools">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M15 18l-6-6 6-6"/>
-                </svg>
-              </button>
-              <button class="overlay-btn menu-btn" id="menuBtn" type="button" aria-label="Settings">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                  <line x1="4" y1="7" x2="20" y2="7"/>
-                  <line x1="4" y1="12" x2="20" y2="12"/>
-                  <line x1="4" y1="17" x2="20" y2="17"/>
-                </svg>
-              </button>
-              <div class="page-title-row">
-                <span class="label-prefix-text">Label:</span>
-                <div class="page-title-group">
-                  <h1 id="pageTitle" title="Tap to edit image label">Item_01</h1>
-                  <button
-                    class="label-increment-btn hidden"
-                    id="labelIncrementBtn"
-                    type="button"
-                    aria-label="Increment label number"
-                  >+</button>
-                </div>
-              </div>
-              <button class="overlay-btn fullscreen-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen">
-                <svg class="fullscreen-enter-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M8 3H3v5M16 3h5v5M16 21h5v-5M8 21H3v-5"/>
-                </svg>
-                <svg class="fullscreen-exit-icon hidden" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M8 3v3H3M16 3v3h5M16 21v-3h5M8 21v-3H3"/>
-                </svg>
-              </button>
-            </div>
-            <p class="stats" id="stats">Starting camera…</p>
-          </div>
-          <div class="wide-overlay-bottom">
-            <span class="zoom-label" id="maxResolutionLabel">Max resolution · …</span>
+  <div class="screen-overlay" id="screenOverlay">
+    <div class="zoom-overlay-top">
+      <div class="top-bar">
+        <button class="overlay-btn back-btn" id="backBtn" type="button" aria-label="Back to tools">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <button class="overlay-btn menu-btn" id="menuBtn" type="button" aria-label="Settings">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <line x1="4" y1="7" x2="20" y2="7"/>
+            <line x1="4" y1="12" x2="20" y2="12"/>
+            <line x1="4" y1="17" x2="20" y2="17"/>
+          </svg>
+        </button>
+        <button class="overlay-btn roi-btn" id="roiBtn" type="button" aria-pressed="false">ROI</button>
+        <div class="page-title-row">
+          <span class="label-prefix-text">Label:</span>
+          <div class="page-title-group">
+            <h1 id="pageTitle" title="Tap to edit image label">Item_01</h1>
+            <button
+              class="label-increment-btn hidden"
+              id="labelIncrementBtn"
+              type="button"
+              aria-label="Increment label number"
+            >+</button>
           </div>
         </div>
+        <button class="overlay-btn fullscreen-btn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen">
+          <svg class="fullscreen-enter-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 3H3v5M16 3h5v5M16 21h5v-5M8 21H3v-5"/>
+          </svg>
+          <svg class="fullscreen-exit-icon hidden" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 3v3H3M16 3v3h5M16 21v-3h5M8 21v-3H3"/>
+          </svg>
+        </button>
       </div>
-    </section>
+      <div class="view-info">
+        <span class="stats" id="maxResolutionLabel">Max resolution · …</span>
+        <span class="stats" id="resolutionLabel">Starting camera…</span>
+        <span class="zoom-label" id="zoomLabel">Center crop · 800 × 800</span>
+        <span class="stats" id="magnificationLabel">Magnification: 2×</span>
+        <span class="quality-metric hidden" id="focusScoreLabel">Focus score · 0.0</span>
+        <span class="quality-metric hidden" id="maxPixelCountLabel">Max Pixel Count · 0</span>
+      </div>
+    </div>
+    <div class="focus-meter hidden" id="focusMeter">
+      <span class="focus-meter-value" id="focusMeterValue">0.0</span>
+      <div class="focus-meter-bar" aria-hidden="true">
+        <div class="focus-meter-fill"></div>
+        <div class="focus-meter-level" id="focusMeterLevel"></div>
+      </div>
+    </div>
+  </div>
 
+  <main>
     <section class="zoom-section" aria-label="Center zoom">
       <div class="zoom-view">
         <canvas id="zoomCanvas" width="800" height="800"></canvas>
         <canvas id="metricsRegionCanvas" class="metrics-region-overlay hidden"></canvas>
         <div class="zoom-overlay">
-          <div class="zoom-overlay-top">
-            <span class="quality-metric hidden" id="focusScoreLabel">Focus score · 0.0</span>
-            <span class="zoom-label" id="zoomLabel">Center crop · 800 × 800</span>
-            <span class="quality-metric hidden" id="maxPixelCountLabel">Max Pixel Count · 0</span>
-          </div>
           <div class="zoom-overlay-bottom">
             <button class="capture-btn" id="captureBtn" type="button" aria-label="Save PNG" disabled></button>
             <input
@@ -499,6 +657,18 @@
         <div class="histogram-overlay hidden" id="histogramOverlay">
           <canvas id="histogramCanvas" width="140" height="90"></canvas>
         </div>
+        <div class="roi-editor hidden" id="roiEditor">
+          <div class="roi-rect" id="roiRect">
+            <div class="roi-edge roi-edge-top" data-edge="top"></div>
+            <div class="roi-edge roi-edge-right" data-edge="right"></div>
+            <div class="roi-edge roi-edge-bottom" data-edge="bottom"></div>
+            <div class="roi-edge roi-edge-left" data-edge="left"></div>
+          </div>
+          <div class="roi-select">
+            <button class="roi-select-btn" id="roiSelectBtn" type="button">Select ROI</button>
+            <span class="roi-select-size" id="roiSelectSize"></span>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -511,19 +681,24 @@
   <script src="image-processing.js"></script>
   <script src="barcode-detection.js"></script>
   <script>
-    const WIDE_ASPECT = 16 / 9;
-
     const video = document.getElementById('video');
-    const wideCanvas = document.getElementById('wideCanvas');
     const zoomCanvas = document.getElementById('zoomCanvas');
-    const wideCtx = wideCanvas.getContext('2d');
     const zoomCtx = zoomCanvas.getContext('2d');
-    const statsEl = document.getElementById('stats');
+    const resolutionLabel = document.getElementById('resolutionLabel');
+    const magnificationLabel = document.getElementById('magnificationLabel');
     const errorEl = document.getElementById('error');
     const captureBtn = document.getElementById('captureBtn');
     const savedFilenameField = document.getElementById('savedFilenameField');
     const backBtn = document.getElementById('backBtn');
     const menuBtn = document.getElementById('menuBtn');
+    const roiBtn = document.getElementById('roiBtn');
+    const roiEditor = document.getElementById('roiEditor');
+    const roiRect = document.getElementById('roiRect');
+    const roiSelectBtn = document.getElementById('roiSelectBtn');
+    const roiSelectSize = document.getElementById('roiSelectSize');
+    let roiEditMode = false;
+    let roiDraft = null;
+    let roiDrag = null;
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const fullscreenEnterIcon = fullscreenBtn.querySelector('.fullscreen-enter-icon');
     const fullscreenExitIcon = fullscreenBtn.querySelector('.fullscreen-exit-icon');
@@ -532,6 +707,16 @@
     const maxResolutionLabel = document.getElementById('maxResolutionLabel');
     const zoomLabel = document.getElementById('zoomLabel');
     const focusScoreLabel = document.getElementById('focusScoreLabel');
+    const focusMeter = document.getElementById('focusMeter');
+    const focusMeterValue = document.getElementById('focusMeterValue');
+    const focusMeterLevel = document.getElementById('focusMeterLevel');
+    const FOCUS_METER_MIN = 10;
+    const FOCUS_METER_GREEN = 40;
+    const FOCUS_METER_MAX = 60;
+    const FOCUS_COLOR_YELLOW = [234, 179, 8];
+    const FOCUS_COLOR_GREEN = [34, 197, 94];
+    const FOCUS_COLOR_DARK = [20, 83, 45];
+    let lastFocusScore = null;
     const maxPixelCountLabel = document.getElementById('maxPixelCountLabel');
     const histogramOverlay = document.getElementById('histogramOverlay');
     const histogramCanvas = document.getElementById('histogramCanvas');
@@ -543,7 +728,6 @@
     const cropCanvas = document.getElementById('cropCanvas');
     const cropCtx = cropCanvas.getContext('2d', { willReadFrequently: true });
 
-    let wideAnimationId = null;
     let centerLoopActive = false;
     let centerInFlight = false;
     let appSettings = loadSettings();
@@ -642,17 +826,34 @@
       });
     }
 
-    function updateZoomLabel(size) {
+    function updateZoomLabel(width, height) {
       const modeLabel = getProcessingLabel(appSettings);
       const mode = modeLabel ? ` · ${modeLabel}` : '';
+      if (isRoiCrop(appSettings.cropSize)) {
+        zoomLabel.textContent = width && height
+          ? `ROI · ${width} × ${height}${mode}`
+          : `ROI${mode}`;
+        return;
+      }
+
+      if (isNoCrop(appSettings.cropSize)) {
+        zoomLabel.textContent = width && height
+          ? `Full image · ${width} × ${height}${mode}`
+          : `Full image${mode}`;
+        return;
+      }
+
+      const size = width || appSettings.cropSize;
       zoomLabel.textContent = `Center crop · ${size} × ${size}${mode}`;
     }
 
     function syncProcessingState() {
+      const roi = sanitizeRoi(appSettings.cropRoi);
       const key = [
         appSettings.imageProcessing,
         appSettings.movingAverageRatio,
         appSettings.cropSize,
+        roi ? `${roi.x},${roi.y},${roi.width},${roi.height}` : '',
         appSettings.barcodeDecoder,
         appSettings.barcodeFormat
       ].join(':');
@@ -666,19 +867,192 @@
 
     function applyCropSize(size) {
       appSettings.cropSize = size;
-      updateZoomLabel(size);
-      zoomView.style.setProperty('--crop-max', `${size}px`);
+      const variable = isNoCrop(size) || isRoiCrop(size);
+      zoomView.classList.toggle('full-frame', variable);
+      if (variable) {
+        zoomView.style.removeProperty('--crop-max');
+      } else {
+        zoomView.style.removeProperty('--frame-aspect');
+        zoomView.style.setProperty('--crop-max', `${size}px`);
+      }
+
+      const roi = isRoiCrop(size) ? sanitizeRoi(appSettings.cropRoi) : null;
+      if (roi) {
+        zoomView.style.setProperty('--frame-aspect', `${roi.width} / ${roi.height}`);
+        updateZoomLabel(roi.width, roi.height);
+        return;
+      }
+
+      updateZoomLabel(variable ? 0 : size, variable ? 0 : size);
     }
 
-    function ensureCenterCanvases(squareSize) {
-      if (cropCanvas.width !== squareSize || cropCanvas.height !== squareSize) {
-        cropCanvas.width = squareSize;
-        cropCanvas.height = squareSize;
+    function layoutRoiEditor() {
+      if (!roiEditMode || !roiDraft) return;
+
+      const frameW = video.videoWidth || zoomCanvas.width;
+      const frameH = video.videoHeight || zoomCanvas.height;
+      if (!frameW || !frameH) return;
+
+      roiDraft = clampRoiToFrame(roiDraft, frameW, frameH);
+      roiRect.style.left = `${(roiDraft.x / frameW) * 100}%`;
+      roiRect.style.top = `${(roiDraft.y / frameH) * 100}%`;
+      roiRect.style.width = `${(roiDraft.width / frameW) * 100}%`;
+      roiRect.style.height = `${(roiDraft.height / frameH) * 100}%`;
+      roiSelectSize.textContent = `${roiDraft.width}x${roiDraft.height}`;
+    }
+
+    function nearestRoiEdge(clientX, clientY) {
+      const bounds = roiRect.getBoundingClientRect();
+      const slop = 36;
+      const withinY = clientY >= bounds.top - slop && clientY <= bounds.bottom + slop;
+      const withinX = clientX >= bounds.left - slop && clientX <= bounds.right + slop;
+      const options = [];
+
+      if (withinY) {
+        options.push({ edge: 'left', dist: Math.abs(clientX - bounds.left) });
+        options.push({ edge: 'right', dist: Math.abs(clientX - bounds.right) });
       }
-      if (zoomCanvas.width !== squareSize || zoomCanvas.height !== squareSize) {
-        zoomCanvas.width = squareSize;
-        zoomCanvas.height = squareSize;
-        updateZoomLabel(squareSize);
+      if (withinX) {
+        options.push({ edge: 'top', dist: Math.abs(clientY - bounds.top) });
+        options.push({ edge: 'bottom', dist: Math.abs(clientY - bounds.bottom) });
+      }
+
+      options.sort((a, b) => a.dist - b.dist);
+      if (!options.length || options[0].dist > slop) return null;
+      return options[0].edge;
+    }
+
+    function nudgeRoiEdge(roi, edge, step, frameW, frameH) {
+      let { x, y, width, height } = roi;
+      const minWidth = Math.min(minimumCropSize(), frameW);
+      const minHeight = Math.min(minimumCropSize(), frameH);
+
+      if (edge === 'left') {
+        const next = Math.min(Math.max(0, x + step), x + width - minWidth);
+        width -= next - x;
+        x = next;
+      } else if (edge === 'right') {
+        width = Math.min(Math.max(minWidth, width + step), frameW - x);
+      } else if (edge === 'top') {
+        const next = Math.min(Math.max(0, y + step), y + height - minHeight);
+        height -= next - y;
+        y = next;
+      } else if (edge === 'bottom') {
+        height = Math.min(Math.max(minHeight, height + step), frameH - y);
+      }
+
+      return clampRoiToFrame({ x, y, width, height }, frameW, frameH);
+    }
+
+    function imagePointFromClient(clientX, clientY) {
+      const bounds = zoomCanvas.getBoundingClientRect();
+      const frameW = video.videoWidth || zoomCanvas.width;
+      const frameH = video.videoHeight || zoomCanvas.height;
+      if (!bounds.width || !bounds.height || !frameW || !frameH) return null;
+
+      return {
+        x: ((clientX - bounds.left) / bounds.width) * frameW,
+        y: ((clientY - bounds.top) / bounds.height) * frameH,
+        frameW,
+        frameH
+      };
+    }
+
+    function onRoiPointerDown(event) {
+      if (!roiEditMode) return;
+      const edge = nearestRoiEdge(event.clientX, event.clientY) || event.currentTarget.dataset.edge;
+      const point = imagePointFromClient(event.clientX, event.clientY);
+      if (!edge || !point) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      roiDrag = {
+        pointerId: event.pointerId,
+        edge,
+        lastX: point.x,
+        lastY: point.y,
+        acc: 0
+      };
+    }
+
+    function onRoiPointerMove(event) {
+      if (!roiDrag || event.pointerId !== roiDrag.pointerId) return;
+      const point = imagePointFromClient(event.clientX, event.clientY);
+      if (!point || !roiDraft) return;
+
+      event.preventDefault();
+      const delta = roiDrag.edge === 'left' || roiDrag.edge === 'right'
+        ? point.x - roiDrag.lastX
+        : point.y - roiDrag.lastY;
+      roiDrag.lastX = point.x;
+      roiDrag.lastY = point.y;
+      roiDrag.acc += delta;
+
+      let changed = false;
+      while (Math.abs(roiDrag.acc) >= ROI_STEP) {
+        const step = roiDrag.acc > 0 ? ROI_STEP : -ROI_STEP;
+        roiDrag.acc -= step;
+        roiDraft = nudgeRoiEdge(roiDraft, roiDrag.edge, step, point.frameW, point.frameH);
+        changed = true;
+      }
+
+      if (changed) layoutRoiEditor();
+    }
+
+    function onRoiPointerUp(event) {
+      if (!roiDrag || event.pointerId !== roiDrag.pointerId) return;
+      roiDrag = null;
+    }
+
+    function exitRoiEdit() {
+      roiEditMode = false;
+      roiDrag = null;
+      roiBtn.classList.remove('active');
+      roiBtn.setAttribute('aria-pressed', 'false');
+      roiEditor.classList.add('hidden');
+    }
+
+    function enterRoiEdit() {
+      const frameW = video.videoWidth;
+      const frameH = video.videoHeight;
+      roiDraft = frameW && frameH
+        ? clampRoiToFrame(appSettings.cropRoi, frameW, frameH)
+        : (sanitizeRoi(appSettings.cropRoi) || { x: 0, y: 0, width: DEFAULT_CROP_SIZE, height: DEFAULT_CROP_SIZE });
+      roiEditMode = true;
+      appSettings.cropSize = NO_CROP;
+      saveSettings(appSettings);
+      applyCropSize(NO_CROP);
+      syncProcessingState();
+      roiBtn.classList.add('active');
+      roiBtn.setAttribute('aria-pressed', 'true');
+      roiEditor.classList.remove('hidden');
+      layoutRoiEditor();
+    }
+
+    function confirmRoiSelection() {
+      const frameW = video.videoWidth;
+      const frameH = video.videoHeight;
+      if (!frameW || !frameH || !roiDraft) return;
+
+      const roi = clampRoiToFrame(roiDraft, frameW, frameH);
+      appSettings.cropRoi = roi;
+      appSettings.cropSize = ROI_CROP;
+      saveSettings(appSettings);
+      exitRoiEdit();
+      applyCropSize(ROI_CROP);
+      syncProcessingState();
+    }
+
+    function ensureCenterCanvases(width, height) {
+      if (cropCanvas.width !== width || cropCanvas.height !== height) {
+        cropCanvas.width = width;
+        cropCanvas.height = height;
+      }
+      if (zoomCanvas.width !== width || zoomCanvas.height !== height) {
+        zoomCanvas.width = width;
+        zoomCanvas.height = height;
+        updateZoomLabel(width, height);
       }
     }
 
@@ -689,25 +1063,85 @@
       );
     }
 
-    function updateMetricsRegionOverlay(squareSize) {
+    function updateMetricsRegionOverlay(width, height) {
       if (!qualityMetricsActive()) {
         metricsRegionCanvas.classList.add('hidden');
         return;
       }
 
-      if (metricsRegionCanvas.width !== squareSize || metricsRegionCanvas.height !== squareSize) {
-        metricsRegionCanvas.width = squareSize;
-        metricsRegionCanvas.height = squareSize;
+      if (metricsRegionCanvas.width !== width || metricsRegionCanvas.height !== height) {
+        metricsRegionCanvas.width = width;
+        metricsRegionCanvas.height = height;
       }
 
-      drawMetricsRegionOverlay(metricsRegionCtx, squareSize);
+      const circleColor = appSettings.qualityMetrics?.focusScore && lastFocusScore != null
+        ? focusScoreColor(lastFocusScore)
+        : 'rgba(255, 255, 255, 0.5)';
+      drawMetricsRegionOverlay(metricsRegionCtx, width, height, circleColor);
       metricsRegionCanvas.classList.remove('hidden');
+    }
+
+    function mixColor(from, to, amount) {
+      const t = Math.min(1, Math.max(0, amount));
+      const channels = from.map((channel, index) => Math.round(channel + (to[index] - channel) * t));
+      return `rgb(${channels[0]}, ${channels[1]}, ${channels[2]})`;
+    }
+
+    function focusScoreColor(score) {
+      const span = FOCUS_METER_MAX - FOCUS_METER_MIN;
+      const position = Math.min(1, Math.max(0, ((Number(score) || 0) - FOCUS_METER_MIN) / span));
+      const yellowHold = 0.42;
+      const greenAt = (FOCUS_METER_GREEN - FOCUS_METER_MIN) / span;
+      if (position <= yellowHold) {
+        return mixColor(FOCUS_COLOR_YELLOW, FOCUS_COLOR_YELLOW, 0);
+      }
+      if (position <= greenAt) {
+        return mixColor(FOCUS_COLOR_YELLOW, FOCUS_COLOR_GREEN, (position - yellowHold) / (greenAt - yellowHold));
+      }
+      return mixColor(FOCUS_COLOR_GREEN, FOCUS_COLOR_DARK, (position - greenAt) / (1 - greenAt));
+    }
+
+    function placeFocusMeter() {
+      const info = document.querySelector('.view-info');
+      const host = focusMeter.parentElement;
+      const bar = focusMeter.querySelector('.focus-meter-bar');
+      if (!info || !host || !bar) return;
+      const line = info.querySelector('.stats');
+      const lineHeight = line ? line.getBoundingClientRect().height : 18;
+      const top = info.getBoundingClientRect().bottom - host.getBoundingClientRect().top + lineHeight * 2;
+      const safeTop = Math.max(0, top);
+      focusMeter.style.top = `${safeTop}px`;
+
+      const hostHeight = host.getBoundingClientRect().height;
+      const valueHeight = focusMeterValue.getBoundingClientRect().height || lineHeight;
+      const gap = 6;
+      const bottomGap = 12;
+      const available = hostHeight - safeTop - valueHeight - gap - bottomGap;
+      const preferred = hostHeight * 0.5;
+      bar.style.height = `${Math.max(0, Math.min(preferred, available))}px`;
+    }
+
+    function hideFocusMeter() {
+      focusMeter.classList.add('hidden');
+      lastFocusScore = null;
+    }
+
+    function updateFocusMeter(score) {
+      const value = Number(score) || 0;
+      lastFocusScore = value;
+      const clamped = Math.min(FOCUS_METER_MAX, Math.max(FOCUS_METER_MIN, value));
+      const ratio = (clamped - FOCUS_METER_MIN) / (FOCUS_METER_MAX - FOCUS_METER_MIN);
+      focusMeterLevel.style.bottom = `${ratio * 100}%`;
+      focusMeterValue.textContent = value.toFixed(1);
+      focusMeter.classList.remove('hidden');
+      placeFocusMeter();
     }
 
     function updateQualityMetricsOverlay() {
       if (!appSettings.qualityMetrics?.focusScore) {
         resetFocusScoreHistory();
         focusScoreLabel.classList.add('hidden');
+        hideFocusMeter();
       }
       if (!appSettings.qualityMetrics?.showHistogram) {
         histogramOverlay.classList.add('hidden');
@@ -722,12 +1156,15 @@
       if (!appSettings.qualityMetrics?.focusScore) {
         resetFocusScoreHistory();
         focusScoreLabel.classList.add('hidden');
+        hideFocusMeter();
         return;
       }
 
       recordFocusScore(computeFocusScore(cropped));
-      focusScoreLabel.textContent = formatFocusScore(getSmoothedFocusScore());
+      const score = getSmoothedFocusScore();
+      focusScoreLabel.textContent = formatFocusScore(score);
       focusScoreLabel.classList.remove('hidden');
+      updateFocusMeter(score);
     }
 
     function updateHistogram(cropped) {
@@ -821,7 +1258,7 @@
     function showError(message) {
       errorEl.textContent = message;
       errorEl.classList.add('visible');
-      statsEl.textContent = 'Camera unavailable';
+      resolutionLabel.textContent = 'Camera unavailable';
     }
 
     function updateMaxResolutionLabel(maxWidth, maxHeight) {
@@ -844,39 +1281,129 @@
       });
     }
 
-    async function getMaxResolutionStream() {
-      const cameraSelection = normalizeCameraSelection(appSettings.cameraSelection);
-      const temp = await openCameraStream(buildVideoConstraintsForCamera(cameraSelection));
-      const track = temp.getVideoTracks()[0];
-      const caps = track.getCapabilities?.() ?? {};
+    function sizeConstraint(width, height, strict) {
+      if (strict) {
+        return {
+          width: { min: width, ideal: width },
+          height: { min: height, ideal: height }
+        };
+      }
 
-      temp.getTracks().forEach((t) => t.stop());
+      return {
+        width: { ideal: width },
+        height: { ideal: height }
+      };
+    }
 
-      const maxWidth = caps.width?.max ?? null;
-      const maxHeight = caps.height?.max ?? null;
-      const requested = getRequestedResolution(appSettings.imageResolution, maxWidth, maxHeight);
-      const magnification = normalizeImageMagnification(appSettings.imageMagnification);
-
+    function resolutionAttempts(requested, requestMax) {
       const attempts = [
-        buildVideoConstraintsForCamera(cameraSelection, {
-          width: { ideal: requested.width },
-          height: { ideal: requested.height },
-          zoom: magnification
-        }),
-        buildVideoConstraintsForCamera(cameraSelection, {
-          width: { ideal: requested.width },
-          height: { ideal: requested.height },
-          advanced: [{ zoom: magnification }]
-        }),
+        sizeConstraint(requested.width, requested.height, true),
+        sizeConstraint(requested.width, requested.height, false)
+      ];
+
+      if (requestMax) {
+        const fallbacks = [
+          [3840, 2160],
+          [1920, 1440],
+          [1920, 1080],
+          [1280, 720]
+        ];
+        for (const [width, height] of fallbacks) {
+          if (width < requested.width || height < requested.height) {
+            attempts.push(sizeConstraint(width, height, false));
+          }
+        }
+      }
+
+      attempts.push(null);
+      return attempts;
+    }
+
+    async function readCameraResolutionCaps(cameraSelection) {
+      const probeOrder = [
+        buildVideoConstraintsForCamera(cameraSelection, sizeConstraint(4096, 3024, false)),
         buildVideoConstraintsForCamera(cameraSelection)
       ];
 
-      for (const videoConstraints of attempts) {
+      for (const videoConstraints of probeOrder) {
         try {
-          const stream = await openCameraStream(videoConstraints);
-          return { stream, maxWidth, maxHeight };
+          const temp = await openCameraStream(videoConstraints);
+          const track = temp.getVideoTracks()[0];
+          const caps = track.getCapabilities?.() ?? {};
+          const settings = track.getSettings?.() ?? {};
+          temp.getTracks().forEach((item) => item.stop());
+          return {
+            maxWidth: caps.width?.max ?? settings.width ?? null,
+            maxHeight: caps.height?.max ?? settings.height ?? null
+          };
+        } catch {
+          // This browser rejected the probe. Try the next one.
+        }
+      }
+
+      return { maxWidth: null, maxHeight: null };
+    }
+
+    async function raiseTrackResolution(track, requested) {
+      const attempts = [
+        sizeConstraint(requested.width, requested.height, false),
+        { advanced: [sizeConstraint(requested.width, requested.height, false)] },
+        sizeConstraint(requested.width, requested.height, true)
+      ];
+
+      for (const constraints of attempts) {
+        try {
+          await track.applyConstraints(constraints);
+          const settings = track.getSettings?.() ?? {};
+          const width = settings.width || 0;
+          const height = settings.height || 0;
+          if (width >= requested.width * 0.9 && height >= requested.height * 0.9) {
+            return true;
+          }
         } catch {
           // Try the next constraint format supported by this browser.
+        }
+      }
+
+      return false;
+    }
+
+    async function getMaxResolutionStream() {
+      const cameraSelection = normalizeCameraSelection(appSettings.cameraSelection);
+      const { maxWidth, maxHeight } = await readCameraResolutionCaps(cameraSelection);
+      const requested = getRequestedResolution(appSettings.imageResolution, maxWidth, maxHeight);
+      const requestMax = appSettings.imageResolution === 'max';
+
+      for (const size of resolutionAttempts(requested, requestMax)) {
+        try {
+          const stream = await openCameraStream(
+            buildVideoConstraintsForCamera(cameraSelection, size || {})
+          );
+          const track = stream.getVideoTracks()[0];
+          if (size) {
+            await raiseTrackResolution(track, {
+              width: size.width.ideal,
+              height: size.height.ideal
+            });
+          }
+
+          const settings = track.getSettings?.() ?? {};
+          const grantedWidth = settings.width || 0;
+          const grantedHeight = settings.height || 0;
+          const dimensionsKnown = grantedWidth > 0 && grantedHeight > 0;
+          const closeEnough = !size || !dimensionsKnown || (
+            grantedWidth >= size.width.ideal * 0.9 &&
+            grantedHeight >= size.height.ideal * 0.9
+          );
+
+          if (closeEnough || !size) {
+            return { stream, maxWidth, maxHeight, grantedWidth, grantedHeight };
+          }
+
+          stream.getTracks().forEach((item) => item.stop());
+        } catch {
+          // Try the next resolution. Zoom is applied later so it cannot
+          // reject the high-resolution request.
         }
       }
 
@@ -914,102 +1441,40 @@
       const w = video.videoWidth;
       const h = video.videoHeight;
 
-      if (!w || !h) {
-        statsEl.innerHTML = `Magnification: <span>${magnification}×</span>`;
-        return;
-      }
-
-      statsEl.innerHTML =
-        `Resolution: <span>${w} × ${h}</span><br>` +
-        `Magnification: <span>${magnification}×</span>`;
-    }
-
-    function getWideCropRegion(vw, vh) {
-      let cropW = vw;
-      let cropH = vw / WIDE_ASPECT;
-      if (cropH > vh) {
-        cropH = vh;
-        cropW = vh * WIDE_ASPECT;
-      }
-      return {
-        srcX: (vw - cropW) / 2,
-        srcY: (vh - cropH) / 2,
-        cropW,
-        cropH
-      };
+      magnificationLabel.textContent = `Magnification: ${magnification}×`;
+      resolutionLabel.textContent = w && h
+        ? `Resolution: ${w} × ${h}`
+        : 'Resolution: …';
     }
 
     function getCenterCropRegion(vw, vh, size) {
-      const squareSize = Math.min(size, vw, vh);
+      if (isNoCrop(size)) {
+        return { srcX: 0, srcY: 0, width: vw, height: vh };
+      }
+
+      if (isRoiCrop(size)) {
+        const roi = clampRoiToFrame(appSettings.cropRoi, vw, vh);
+        return { srcX: roi.x, srcY: roi.y, width: roi.width, height: roi.height };
+      }
+
+      const squareSize = Math.min(Number(size), vw, vh);
       return {
-        sqX: (vw - squareSize) / 2,
-        sqY: (vh - squareSize) / 2,
-        squareSize
+        srcX: (vw - squareSize) / 2,
+        srcY: (vh - squareSize) / 2,
+        width: squareSize,
+        height: squareSize
       };
-    }
-
-    function drawCropOverlay(ctx, centerCrop, wideCrop, displayW, displayH) {
-      const { sqX, sqY, squareSize } = centerCrop;
-      const { srcX, srcY, cropW, cropH } = wideCrop;
-
-      const rectX = ((sqX - srcX) / cropW) * displayW;
-      const rectY = ((sqY - srcY) / cropH) * displayH;
-      const rectW = (squareSize / cropW) * displayW;
-      const rectH = (squareSize / cropH) * displayH;
-
-      ctx.save();
-      ctx.setLineDash([8, 5]);
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
-      ctx.strokeRect(rectX + 1, rectY + 1, rectW, rectH);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.strokeRect(rectX, rectY, rectW, rectH);
-      ctx.restore();
-    }
-
-    function drawWideFrame() {
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      if (!vw || !vh) {
-        wideAnimationId = requestAnimationFrame(drawWideFrame);
-        return;
-      }
-
-      const container = wideCanvas.parentElement;
-      const displayW = container.clientWidth;
-      const displayH = container.clientHeight;
-      if (wideCanvas.width !== displayW || wideCanvas.height !== displayH) {
-        wideCanvas.width = displayW;
-        wideCanvas.height = displayH;
-      }
-
-      const wideCrop = getWideCropRegion(vw, vh);
-      const centerCrop = getCenterCropRegion(vw, vh, appSettings.cropSize);
-
-      wideCtx.drawImage(
-        video,
-        wideCrop.srcX, wideCrop.srcY, wideCrop.cropW, wideCrop.cropH,
-        0, 0, displayW, displayH
-      );
-
-      drawCropOverlay(wideCtx, centerCrop, wideCrop, displayW, displayH);
-      wideAnimationId = requestAnimationFrame(drawWideFrame);
     }
 
     function startRenderLoops() {
       stopRenderLoops();
       centerLoopActive = true;
-      wideAnimationId = requestAnimationFrame(drawWideFrame);
       queueCenterFrame();
     }
 
     function stopRenderLoops() {
       centerLoopActive = false;
       centerInFlight = false;
-      if (wideAnimationId) {
-        cancelAnimationFrame(wideAnimationId);
-        wideAnimationId = null;
-      }
     }
 
     function queueCenterFrame() {
@@ -1044,43 +1509,49 @@
       }, 0);
     }
 
-    function renderCenterView(source, centerCrop) {
-      const { sqX, sqY, squareSize } = centerCrop;
+    function renderCenterView(source, frame) {
+      const { srcX, srcY, width, height } = frame;
 
-      ensureCenterCanvases(squareSize);
+      if (isNoCrop(appSettings.cropSize) || isRoiCrop(appSettings.cropSize)) {
+        zoomView.style.setProperty('--frame-aspect', `${width} / ${height}`);
+      }
+
+      if (roiEditMode) layoutRoiEditor();
+
+      ensureCenterCanvases(width, height);
 
       cropCtx.drawImage(
         source,
-        sqX, sqY, squareSize, squareSize,
-        0, 0, squareSize, squareSize
+        srcX, srcY, width, height,
+        0, 0, width, height
       );
 
       const metricsSample = sampleQualityMetrics(cropCanvas);
 
-      zoomCtx.clearRect(0, 0, squareSize, squareSize);
+      zoomCtx.clearRect(0, 0, width, height);
 
       if (appSettings.imageProcessing === 'barcodeDetection') {
-        zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
+        zoomCtx.drawImage(cropCanvas, 0, 0, width, height);
         scheduleBarcodeDetection(cropCanvas, appSettings);
-        drawBarcodeOverlay(zoomCtx, getLastBarcodeResult(), squareSize);
+        drawBarcodeOverlay(zoomCtx, getLastBarcodeResult(), width);
         updateQualityMetrics(metricsSample);
-        updateMetricsRegionOverlay(squareSize);
+        updateMetricsRegionOverlay(width, height);
         return;
       }
 
       syncProcessingState();
 
       if (appSettings.imageProcessing === 'none') {
-        zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
+        zoomCtx.drawImage(cropCanvas, 0, 0, width, height);
       } else {
-        const cropped = cropCtx.getImageData(0, 0, squareSize, squareSize);
-        const processed = applyImageProcessing(cropped, appSettings);
+        const frameData = cropCtx.getImageData(0, 0, width, height);
+        const processed = applyImageProcessing(frameData, appSettings);
         cropCtx.putImageData(processed, 0, 0);
-        zoomCtx.drawImage(cropCanvas, 0, 0, squareSize, squareSize);
+        zoomCtx.drawImage(cropCanvas, 0, 0, width, height);
       }
 
       updateQualityMetrics(metricsSample);
-      updateMetricsRegionOverlay(squareSize);
+      updateMetricsRegionOverlay(width, height);
     }
 
     function captureFrameForSave() {
@@ -1093,6 +1564,26 @@
       const centerCrop = getCenterCropRegion(vw, vh, appSettings.cropSize);
       renderCenterView(video, centerCrop);
       return true;
+    }
+
+    function exportCanvasForSave() {
+      const width = cropCanvas.width;
+      const height = cropCanvas.height;
+      if (!width || !height) {
+        return zoomCanvas;
+      }
+
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = width;
+      exportCanvas.height = height;
+      const exportCtx = exportCanvas.getContext('2d');
+      exportCtx.drawImage(cropCanvas, 0, 0);
+
+      if (appSettings.imageProcessing === 'barcodeDetection') {
+        drawBarcodeOverlay(exportCtx, getLastBarcodeResult(), width);
+      }
+
+      return exportCanvas;
     }
 
     async function savePng() {
@@ -1118,10 +1609,11 @@
         }
 
         const filename = buildImageFilename(appSettings, focusScoreTag);
+        const exportCanvas = exportCanvasForSave();
 
         if ('showSaveFilePicker' in window) {
           const blob = await new Promise((resolve) => {
-            zoomCanvas.toBlob(resolve, 'image/png');
+            exportCanvas.toBlob(resolve, 'image/png');
           });
           if (!blob) {
             throw new Error('Could not encode image.');
@@ -1143,7 +1635,7 @@
         } else {
           const link = document.createElement('a');
           link.download = filename;
-          link.href = zoomCanvas.toDataURL('image/png');
+          link.href = exportCanvas.toDataURL('image/png');
           link.click();
         }
 
@@ -1174,12 +1666,19 @@
         updateMaxResolutionLabel(maxWidth, maxHeight);
 
         await video.play();
-        await applyZoom(track);
 
         await new Promise((resolve) => {
           if (video.videoWidth) return resolve();
           video.addEventListener('loadedmetadata', resolve, { once: true });
         });
+
+        video.width = video.videoWidth;
+        video.height = video.videoHeight;
+        await applyZoom(track);
+        await raiseTrackResolution(
+          track,
+          getRequestedResolution(appSettings.imageResolution, maxWidth, maxHeight)
+        );
 
         updateStats();
         captureBtn.disabled = false;
@@ -1259,6 +1758,26 @@
       window.location.href = 'settings.html';
     });
 
+    roiBtn.addEventListener('click', () => {
+      if (roiEditMode) {
+        exitRoiEdit();
+        return;
+      }
+      enterRoiEdit();
+    });
+
+    roiSelectBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      confirmRoiSelection();
+    });
+
+    roiEditor.querySelectorAll('.roi-edge').forEach((edge) => {
+      edge.addEventListener('pointerdown', onRoiPointerDown, { passive: false });
+      edge.addEventListener('pointermove', onRoiPointerMove, { passive: false });
+      edge.addEventListener('pointerup', onRoiPointerUp);
+      edge.addEventListener('pointercancel', onRoiPointerUp);
+    });
+
     if (isPageFullscreenSupported()) {
       fullscreenBtn.addEventListener('click', toggleFullscreen);
       document.addEventListener('fullscreenchange', updateFullscreenButton);
@@ -1279,6 +1798,8 @@
 
     window.addEventListener('resize', () => {
       if (video.videoWidth) updateStats();
+      if (!focusMeter.classList.contains('hidden')) placeFocusMeter();
+      if (roiEditMode) layoutRoiEditor();
     });
 
     window.addEventListener('beforeunload', () => {

@@ -3,7 +3,10 @@ const CAMERA_OPTIONS_KEY = 'experiment1-camera-options';
 const DEFAULT_IMAGE_LABEL = 'Item_01';
 const DEFAULT_IMAGE_COUNTER = 1;
 const DEFAULT_CROP_SIZE = 800;
-const CROP_SIZE_OPTIONS = [500, 800, 1000, 1500];
+const NO_CROP = 'none';
+const ROI_CROP = 'roi';
+const ROI_STEP = 40;
+const CROP_SIZE_OPTIONS = [500, 800, 1000, 1500, NO_CROP, ROI_CROP];
 const IMAGE_RESOLUTION_OPTIONS = ['max', '1920x1080', '1280x720'];
 const DEFAULT_IMAGE_RESOLUTION = 'max';
 const IMAGE_RESOLUTION_PRESETS = {
@@ -268,6 +271,114 @@ function getRequestedResolution(imageResolution, maxWidth, maxHeight) {
   return { width: preset.width, height: preset.height };
 }
 
+function isNoCrop(size) {
+  return size === NO_CROP;
+}
+
+function isRoiCrop(size) {
+  return size === ROI_CROP;
+}
+
+function minimumCropSize() {
+  const sizes = CROP_SIZE_OPTIONS.filter((size) => typeof size === 'number' && size > 0);
+  return sizes.length ? Math.min(...sizes) : DEFAULT_CROP_SIZE;
+}
+
+function normalizeCropSize(value) {
+  if (isNoCrop(value)) {
+    return NO_CROP;
+  }
+
+  if (isRoiCrop(value)) {
+    return ROI_CROP;
+  }
+
+  const cropSize = Number(value);
+  return CROP_SIZE_OPTIONS.includes(cropSize) ? cropSize : DEFAULT_CROP_SIZE;
+}
+
+function sanitizeRoi(value) {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const x = Math.round(Number(value.x));
+  const y = Math.round(Number(value.y));
+  const width = Math.round(Number(value.width));
+  const height = Math.round(Number(value.height));
+  if (![x, y, width, height].every((part) => Number.isFinite(part))) {
+    return null;
+  }
+
+  if (x < 0 || y < 0 || width < 1 || height < 1) {
+    return null;
+  }
+
+  return { x, y, width, height };
+}
+
+function defaultRoiForFrame(frameW, frameH) {
+  const frameWidth = Math.max(1, Math.floor(frameW));
+  const frameHeight = Math.max(1, Math.floor(frameH));
+  const maxSide = Math.min(frameWidth, frameHeight);
+  let side = Math.min(DEFAULT_CROP_SIZE, maxSide);
+  side = Math.round(side / ROI_STEP) * ROI_STEP;
+  if (side < 1 || side > maxSide) {
+    side = maxSide;
+  }
+
+  let x = Math.round(((frameWidth - side) / 2) / ROI_STEP) * ROI_STEP;
+  let y = Math.round(((frameHeight - side) / 2) / ROI_STEP) * ROI_STEP;
+  x = Math.min(Math.max(0, x), frameWidth - side);
+  y = Math.min(Math.max(0, y), frameHeight - side);
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    width: Math.round(side),
+    height: Math.round(side)
+  };
+}
+
+function clampRoiToFrame(roi, frameW, frameH) {
+  const frameWidth = Math.max(1, Math.floor(Number(frameW) || 0));
+  const frameHeight = Math.max(1, Math.floor(Number(frameH) || 0));
+  const source = sanitizeRoi(roi) || defaultRoiForFrame(frameWidth, frameHeight);
+  let { x, y, width, height } = source;
+
+  const minWidth = Math.min(minimumCropSize(), frameWidth);
+  const minHeight = Math.min(minimumCropSize(), frameHeight);
+
+  x = Math.min(Math.max(0, x), frameWidth - 1);
+  y = Math.min(Math.max(0, y), frameHeight - 1);
+  width = Math.min(Math.max(1, width), frameWidth - x);
+  height = Math.min(Math.max(1, height), frameHeight - y);
+
+  if (width < minWidth) {
+    width = minWidth;
+    if (x + width > frameWidth) x = frameWidth - width;
+  }
+  if (height < minHeight) {
+    height = minHeight;
+    if (y + height > frameHeight) y = frameHeight - height;
+  }
+
+  return {
+    x: Math.max(0, Math.round(x)),
+    y: Math.max(0, Math.round(y)),
+    width: Math.round(width),
+    height: Math.round(height)
+  };
+}
+
+function formatCustomRoiLabel(roi) {
+  const clean = sanitizeRoi(roi);
+  if (!clean) {
+    return 'Custom ROI';
+  }
+
+  return `Custom ROI · ${clean.width} × ${clean.height}`;
+}
+
 function getDefaultSettings() {
   return {
     imageLabel: DEFAULT_IMAGE_LABEL,
@@ -276,6 +387,7 @@ function getDefaultSettings() {
     cameraSelection: DEFAULT_CAMERA_SELECTION,
     imageMagnification: DEFAULT_IMAGE_MAGNIFICATION,
     cropSize: DEFAULT_CROP_SIZE,
+    cropRoi: null,
     qualityMetrics: { ...DEFAULT_QUALITY_METRICS },
     imageProcessing: 'none',
     movingAverageRatio: DEFAULT_MOVING_AVERAGE_RATIO,
@@ -292,7 +404,8 @@ function loadSettings() {
     }
 
     const parsed = JSON.parse(raw);
-    const cropSize = Number(parsed.cropSize);
+    const cropSize = normalizeCropSize(parsed.cropSize);
+    const cropRoi = sanitizeRoi(parsed.cropRoi);
     let imageProcessing = parsed.imageProcessing;
 
     if (!IMAGE_PROCESSING_OPTIONS.includes(imageProcessing)) {
@@ -325,7 +438,8 @@ function loadSettings() {
       imageMagnification: normalizeImageMagnification(
         parsed.imageMagnification ?? DEFAULT_IMAGE_MAGNIFICATION
       ),
-      cropSize: CROP_SIZE_OPTIONS.includes(cropSize) ? cropSize : DEFAULT_CROP_SIZE,
+      cropSize,
+      cropRoi,
       qualityMetrics: normalizeQualityMetrics(parsed.qualityMetrics),
       imageProcessing,
       movingAverageRatio: Number.isFinite(movingAverageRatio)
